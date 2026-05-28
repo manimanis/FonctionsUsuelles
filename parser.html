@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interpréteur interactif d'algorithmes pédagogiques en pseudo-code. Exécutez des programmes algorithmiques avec des fonctions usuelles (chr, ord, arrondi, etc.).">
+  <title>Parse Algorithme - Interpréteur en ligne</title>
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/css/default.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <main class="container" id="app">
+    <div class="text-start mb-3">
+      <a href="index.html" class="btn btn-outline-primary">← Fonctions usuelles</a>
+    </div>
+
+    <div class="row">
+      <!-- Zone d'édition -->
+      <div class="col-md-6">
+        <div class="my-1">
+          <label for="algo"><b>Algorithme</b></label>
+          <textarea name="algo" id="algo" rows="16" class="form-control" v-model="program" @input="highlightCode()"></textarea>
+        </div>
+      </div>
+
+      <!-- Zone de prévisualisation avec coloration -->
+      <div class="col-md-6">
+        <div class="my-1">
+          <label><b>Aperçu coloré</b></label>
+          <div class="code-preview">
+            <pre><code id="highlighted-code" class="algorithm hljs"></code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="my-1">
+      <button class="btn btn-primary" @click="exec()">Exécuter</button>
+    </div>
+
+    <!-- Zone de sortie en temps réel -->
+    <div class="my-1">
+      <label for="sortie"><b>Sortie / Saisie</b></label>
+      <div id="sortie" class="form-control font-monospace sortie-lire" placeholder="La sortie s'affichera ici..."></div>
+    </div>
+  </main>
+
+  <script src="assets/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/highlight.pack.js"></script>
+  <script src="assets/js/hljs.algorithm.js"></script>
+  <script src="assets/js/vue.min.js"></script>
+  <script src="assets/js/functions.js"></script>
+  <script src="assets/js/algorithm-core.js"></script>
+  <script src="assets/js/parser.js"></script>
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      // Highlight initial code
+      setTimeout(() => highlightAlgorithmCode(), 100);
+    });
+
+    function highlightAlgorithmCode() {
+      const codeEl = document.getElementById('highlighted-code');
+      if (!codeEl) return;
+      // Get code from textarea
+      const textarea = document.getElementById('algo');
+      if (!textarea) return;
+      const code = textarea.value || '';
+      codeEl.textContent = code;
+      hljs.highlightBlock(codeEl);
+    }
+  </script>
+</body>
+
+</html>

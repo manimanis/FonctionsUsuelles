@@ -1,0 +1,85 @@
+#anniv {
+  width: 600px;
+  margin: 0 auto;
+  border: 5px darkgrey solid;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+#anniv .params {
+  display: flex;
+  padding-bottom: 20px;
+}
+
+#anniv .nb-bonbons, #anniv .nb-amis, #anniv .bonbons-dispo {
+  font-size: 40px;
+  width: 50%;
+  position: relative;
+  text-align: center;
+}
+
+#anniv .bonbons-dispo {
+  width: 100%;
+  font-size: 80px;
+}
+
+#anniv .nb-bonbons::after, #anniv .nb-amis::after, #anniv .bonbons-dispo::after {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  content: 'Nombre total de Bonbons';
+  display: block;
+  font-size: 10pt;
+  bottom: -16px;
+}
+
+#anniv .nb-amis::after {
+  content: "Nombre d'amis";
+}
+
+#anniv .bonbons-dispo::after {
+  content: "Bonbons à distribuer";
+}
+
+#anniv .range input[type=range] {
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(50% - 30px);
+  margin: 5px 9px;
+}
+
+#anniv .boxes {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  padding: 30px;
+}
+
+#anniv .boxes .box {
+  width: 50px;
+  border: 3px solid black;
+  border-top: 3px solid transparent;
+  text-align: center;
+  position: relative;
+  margin: 2px;
+}
+
+#anniv .boxes .box::after {
+  content: "Boîte " attr(data-index);
+  display: block;
+  position: absolute;
+  bottom: -22px;
+  font-size: 8pt;
+  text-align: center;
+  width: 100%;
+}
+
+#anniv .boxes .box.selected {
+  animation-name: example;
+  animation-duration: 4s;
+}
+
+@keyframes example {
+  from {background-color: red;}
+  to {background-color: transparent;}
+}
