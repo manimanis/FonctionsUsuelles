@@ -52,14 +52,18 @@ function runProgram(program) {
 
     const variables = {};
     const userTypes = {}; // Store type definitions (e.g. tab = tableau[20] réel)
+    const userFunctions = {}; // Store user-defined functions
+    const userProcedures = {}; // Store user-defined procedures
     
-    const evaluator = new Evaluator(
+    const evaluator = new Evaluator({
       variables,
-      (text) => sendOutput(text),
+      outputFn: (text) => sendOutput(text),
       verbose,
-      (promptText) => waitForInput(promptText),
-      userTypes
-    );
+      inputFn:(promptText) => waitForInput(promptText),
+      userTypes,
+      userFunctions,
+      userProcedures
+    });
 
     const lexer = new Lexer(program);
     const tokens = lexer.tokenize();

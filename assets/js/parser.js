@@ -72,6 +72,12 @@ function requestInput(outputEl, promptText, worker) {
       e.preventDefault();
       const value = input.value;
       
+      // Afficher la valeur saisie dans la sortie avant de supprimer l'input
+      const valueDisplay = document.createElement('span');
+      valueDisplay.className = 'input-value';
+      valueDisplay.innerHTML = value + "<br>";
+      outputEl.insertBefore(valueDisplay, input);
+      
       // Supprimer le input du DOM
       input.removeEventListener('keydown', inputHandler);
       input.remove();
@@ -98,53 +104,88 @@ const app = new Vue({
   el: '#app',
   data: {
     program: `///verbeux
-// Types simples
-var n, m : entier
-var x : réel
-var ok : booléen
-var msg : chaîne
-var car : caractère
+type Tab1 = Tableau de 50 chaine
+var n : entier
+var t : Tab1
 
-// Type tableau
-type tab = tableau de 4 réel
-var t : tab
+Procédure Saisir(@n: entier)
+Début
+  Repeter
+    Ecrire("Entrez n ? ")
+    Lire(n)
+  Jusqu'à 5 <= n <= 10
+Fin
 
-// Lecture typée : Lire(x) convertit automatiquement
-// la saisie en fonction du type déclaré
-ecrire("Exemple Lire() typé :")
-ecrire("Donnez un entier pour n :")
-lire(n)
-ecrire("Donnez un réel pour x :")
-lire(x)
-ecrire("Donnez un booléen (vrai/faux) pour ok :")
-lire(ok)
-ecrire("Donnez un message pour msg :")
-lire(msg)
-ecrire("Donnez un caractère pour car :")
-lire(car)
+Procédure Remplir(@t: Tab, n: entier)
+Début
+  Pour i de 0 à n-1 Faire
+    Repeter
+      Ecrire("Entrez t[", i, "] ? ")
+      Lire(t[i])
+    Jusqu'à Verif(t[i])
+  Fin Pour
+Fin
 
-// Affichage après lecture
-ecrire("")
-ecrire("n =", n)
-ecrire("x =", x)
-ecrire("ok =", ok)
-ecrire("msg =", msg)
-ecrire("car =", car)
+Fonction Verif(ch: chaine): booleen
+var i : entier
+Début
+  test ← Long(ch) > 0
+  i ← 0
+  Tant Que test ET i < Long(ch) Faire
+    Si "A" <= Majus(ch[i]) ET Majus(ch[i]) <= "Z" Alors
+      test ← vrai
+    Sinon
+      test ← faux
+    Fin Si
+    i ← i + 1
+  Fin Tant Que
+  Retourner test
+Fin
 
-// Remplissage du tableau
-t[0] ← n
-t[1] ← x
-t[2] ← n + x
-t[3] ← n * 2
+Fonction Calc(n: entier): entier
+var s, i : entier
+Début
+  s ← 0
+  Pour i de 0 à n-1 Faire
+    s ← s + i
+  Fin Pour
+  Retourner s
+Fin
 
-// Affichage d'un tableau
-ecrire("")
-ecrire("Valeurs du tableau t :")
-i ← 0
-tant que i < 4 faire
-  ecrire("t[", i, "] =", t[i])
-  i ← i + 1
-fin tant que`,
+Procédure Trier(@t: Tab, n: entier)
+Début
+  // Tri par sélection
+  Pour i de 0 à n-2 Faire
+    min ← i
+    Pour j de i+1 à n-1 Faire
+      Si Long(t[j]) < Long(t[min]) Alors
+        min ← j
+      Fin Si
+    Fin Pour
+    Si min ≠ i Alors
+      temp ← t[i]
+      t[i] ← t[min]
+      t[min] ← temp
+    Fin Si
+  Fin Pour
+Fin
+
+Procédure Afficher(t: Tab, n: entier)
+Début
+  Pour i de 0 à n-1 Faire
+    Ecrire(t[i])
+  Fin Pour
+Fin
+
+Algorithme PP
+Début
+  Saisir(n)
+  Remplir(t, n)
+  x ← Calc(n)
+  Ecrire("x = ", x)
+  Trier(t, n)
+  Afficher(t, n)
+Fin`,
     instructions: [],
     outputHistory: []
   },

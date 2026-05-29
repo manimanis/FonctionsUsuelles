@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tests - Algorithm Core</title>
+  <link rel="stylesheet" href="assets/css/tests.css">
+</head>
+<body>
+
+<h1>🧪 Batterie de tests — Algorithm Core</h1>
+<p class="subtitle">Teste le lexer, le parser et l'évaluateur pour toutes les fonctionnalités du langage algorithmique.</p>
+
+<div class="progress-bar"><div class="fill" id="progress-fill"></div></div>
+
+<div id="controls">
+  <button id="run-all">▶ Exécuter tous les tests</button>
+  <button id="clear-results">✖ Effacer les résultats</button>
+  <label>
+    Filtrer :
+    <select id="filter-select">
+      <option value="all">Tous</option>
+      <option value="pass">Réussis</option>
+      <option value="fail">Échoués</option>
+    </select>
+  </label>
+</div>
+
+<div id="stats">
+  <div class="stat-card total"><span class="num" id="stat-total">0</span><span class="label">Total</span></div>
+  <div class="stat-card pass"><span class="num" id="stat-pass">0</span><span class="label">Réussis</span></div>
+  <div class="stat-card fail"><span class="num" id="stat-fail">0</span><span class="label">Échoués</span></div>
+</div>
+
+<div id="test-container"></div>
+
+<div id="output-area"></div>
+
+<script src="assets/js/algorithm-core.js"></script>
+<script src="assets/js/tests.js"></script>
+
+</body>
+</html>
