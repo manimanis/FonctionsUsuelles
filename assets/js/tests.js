@@ -30,6 +30,12 @@ function assertEqual(actual, expected, msg = '') {
   }
 }
 
+function assertContains(str, substring, msg = '') {
+  if (!str.includes(substring)) {
+    throw new Error(msg || `Attendu: "${substring}" dans "${str}"`);
+  }
+}
+
 function assertNotNull(value, msg = '') {
   if (value === null || value === undefined) {
     throw new Error(msg || 'La valeur ne doit pas être null ou undefined');
@@ -1168,6 +1174,25 @@ describe('Modules (Procédure, Fonction, Algorithme)', () => {
     assertEqual(variables['y'], 8);  // 2*2*2
   });
 
+  it('Passage par adresse (@)', async () => {
+    const { variables } = await execProg(`var x, y: entier
+      Procédure Permuter(@a: entier, @b: entier)
+      var temp: entier
+      Début
+        temp ← a
+        a ← b
+        b ← temp
+      Fin
+
+      Début
+        x ← 5
+        y ← 6
+        Permuter(x, y)
+      Fin`);
+    assertEqual(variables['x'], 6);
+    assertEqual(variables['y'], 5);
+  });
+
 });
 
 // ─── 12. Mots-clés sans accents ───
@@ -1388,6 +1413,317 @@ describe('Tests de bout en bout (programme complet)', () => {
 
 });
 // terminer */
+
+// ─── 14. Bloc verbeux (///verbeux … ///finverbeux) ───
+describe('Bloc verbeux (///verbeux … ///finverbeux)', () => {
+
+  it('verbeux: parsing d\'un bloc simple', async () => {
+    const code = `///verbeux
+x ← 5
+///finverbeux`;
+    const prog = await execProg(code);
+    assertEqual(prog.outputs.filter(output => output.indexOf('x ← 5') !== -1).length, 1);
+  });
+
+  it('verbeux: plusieurs instructions dans le bloc', async () => {
+    const code = `///verbeux
+x ← 1
+y ← 2
+z ← 3
+///finverbeux`;
+    const prog = await execProg(code);
+    const items = prog.outputs.filter(output => output.indexOf('←') !== -1);
+    assertEqual(items.length, 3);
+    assertEqual(prog.variables.x, 1);
+    assertEqual(prog.variables.y, 2);
+    assertEqual(prog.variables.z, 3);
+    assertContains(items[0], 'x ← 1');
+    assertContains(items[1], 'y ← 2');
+    assertContains(items[2], 'z ← 3');
+  });
+
+  it('verbeux: instructions hors bloc fonctionnent normalement', async () => {
+    const { variables, outputs } = await execProg(`var x: entier
+x ← 0
+///verbeux
+Ecrire("test")
+x ← 5
+///finverbeux
+Ecrire(x)`);
+    assertEqual(variables['x'], 5);
+    // Vérifier que la sortie verbale contient les marqueurs
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('test'), true);
+    assertContains(allOutput, 'x ← 5');
+    assertEqual(String(variables.x), '5');
+  });
+
+  it('verbeux: le bloc active le mode verbeux et affiche l\'état des variables', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 0
+///verbeux
+x ← 10
+x ← x + 5
+///finverbeux`);
+    const allOutput = outputs.join('');
+    // Vérifier les marqueurs de début/fin
+    assertEqual(allOutput.includes('▶ Début du bloc verbeux'), true);
+    assertEqual(allOutput.includes('◀ Fin du bloc verbeux'), true);
+  });
+
+  it('verbeux: affiche l\'évolution des variables', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 0
+///verbeux
+x ← 5
+///finverbeux`);
+    const allOutput = outputs.join('');
+    // L'état des variables devrait s'afficher
+    assertEqual(allOutput.includes('x ← 5'), true);
+  });
+
+  it('verbeux: affiche le résultat des conditions si', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 5
+///verbeux
+si x > 3 alors
+  x ← 10
+finsi
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('✅ vrai'), true);
+    assertEqual(allOutput.includes('Condition "si"'), true);
+  });
+
+  it('verbeux: affiche le résultat des conditions si (fausse)', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 1
+///verbeux
+si x > 10 alors
+  x ← 99
+sinon
+  x ← 0
+finsi
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('❌ faux'), true);
+    assertEqual(allOutput.includes('Branche "sinon" exécutée'), true);
+  });
+
+  it('verbeux: affiche la progression des boucles pour', async () => {
+    const { outputs } = await execProg(`var s: entier
+s ← 0
+///verbeux
+pour i de 1 à 2 faire
+  s ← s + i
+fin pour
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('Boucle Pour'), true);
+    assertEqual(allOutput.includes('i = 1'), true);
+    assertEqual(allOutput.includes('i = 2'), true);
+  });
+
+  it('verbeux: boucle tant que affiche les conditions', async () => {
+    const { outputs } = await execProg(`var i: entier
+i ← 3
+///verbeux
+tant que i > 0 faire
+  i ← i - 1
+fintantque
+///finverbeux`);
+    const allOutput = outputs.join('');
+    const vraiCount = (allOutput.match(/✅ vrai/g) || []).length;
+    const fauxCount = (allOutput.match(/❌ faux/g) || []).length;
+    // 3 itérations vraies + 1 fausse pour sortir
+    assertEqual(vraiCount >= 3, true);
+    assertEqual(fauxCount >= 1, true);
+  });
+
+  it('verbeux: boucle repeter affiche les conditions', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 0
+///verbeux
+repeter
+  x ← x + 1
+jusqu'a x > 2
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('Condition "jusqu\'à"'), true);
+    assertEqual(allOutput.includes('✅ vrai (arrêt)'), true);
+  });
+
+  it('verbeux: bloc à l\'intérieur d\'un algorithme', async () => {
+    const { outputs } = await execProg(`Algorithme Test
+Début
+  var x: entier
+  x ← 0
+  ///verbeux
+  Ecrire("début test")
+  x ← 42
+  ///finverbeux
+  Ecrire(x)
+Fin`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('▶ Début du bloc verbeux'), true);
+    assertEqual(allOutput.includes('◀ Fin du bloc verbeux'), true);
+    assertContains(allOutput, 'début test');
+    assertEqual(allOutput.includes('x ← 42'), true);
+  });
+
+  it('verbeux: bloc dans le corps d\'une procédure', async () => {
+    const { variables, outputs } = await execProg(`var a: entier
+Procédure Test(@a: entier)
+Début
+  ///verbeux
+  a ← a + 10
+  ///finverbeux
+Fin
+Début
+  a ← 1
+  Test(a)
+Fin`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('▶ Début du bloc verbeux'), true);
+    assertEqual(allOutput.includes('◀ Fin du bloc verbeux'), true);
+    assertContains(allOutput, 'a ← 11');
+  });
+
+  it('verbeux: bloc dans le corps d\'une fonction', async () => {
+    const { variables, outputs } = await execProg(`Fonction F(n: entier): entier
+var s: entier
+Début
+  s ← 0
+  ///verbeux
+  s ← s + n
+  ///finverbeux
+  Retourner s
+Fin
+Début
+  r ← F(5)
+Fin`);
+    assertEqual(variables['r'], 5);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('▶ Début du bloc verbeux'), true);
+    assertEqual(allOutput.includes('s ← 5'), true);
+  });
+
+  it('verbeux: l\'imbrication est interdite (erreur)', () => {
+    assertThrows(() => {
+      const lexer = new Lexer(`///verbeux
+x ← 1
+///verbeux
+y ← 2
+///finverbeux
+///finverbeux`);
+      const tokens = lexer.tokenize();
+      new Parser(tokens);
+    }, 'imbriqués');
+  });
+
+  it('verbeux: bloc vide (aucune instruction)', () => {
+    const code = `///verbeux
+///finverbeux`;
+    const lexer = new Lexer(code);
+    const tokens = lexer.tokenize();
+    const parser = new Parser(tokens);
+    assertEqual(parser.statements.length, 1);
+    assertEqual(parser.statements[0].type, 'verboseBlock');
+    assertEqual(parser.statements[0].body.length, 0);
+  });
+
+  it('verbeux: le mode verbeux est désactivé après la fin du bloc', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 0
+///verbeux
+x ← 5
+///finverbeux
+x ← 10`); // Pas de sortie verbale pour cette assignation
+    const allOutput = outputs.join('');
+    // Le contenu du bloc doit être présent
+    assertEqual(allOutput.includes('▶ Début du bloc verbeux'), true);
+    // Mais pas de sortie verbeuse pour l'assignation après le bloc
+    // (on vérifie juste que x a la bonne valeur)
+    const evaluator = await execProg(`var x: entier
+x ← 0
+///verbeux
+x ← 5
+///finverbeux
+x ← 10`);
+    assertEqual(evaluator.variables['x'], 10);
+  });
+
+  it('verbeux: instructions avec condition + boucle dans le bloc', async () => {
+    const { outputs } = await execProg(`var s, i: entier
+s ← 0
+///verbeux
+pour i de 1 à 2 faire
+  si i > 0 alors
+    s ← s + i
+  finsi
+fin pour
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertContains(allOutput, 'Boucle Pour');
+    assertContains(allOutput, 'Condition "si"');
+    assertContains(allOutput, '✅ vrai');
+    assertContains(allOutput, 'i = 1');
+    assertContains(allOutput, 's ← 1');
+    assertContains(allOutput, 'i = 2');
+    assertContains(allOutput, 's ← 3');
+  });
+
+  it('verbeux: affiche les affectations de tableau', async () => {
+    const { outputs } = await execProg(`type tab = tableau de 3 entier
+var t: tab
+///verbeux
+t[0] ← 10
+t[1] ← 20
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertEqual(allOutput.includes('t[0]'), true);
+    assertEqual(allOutput.includes('10'), true);
+    assertEqual(allOutput.includes('t[1]'), true);
+    assertEqual(allOutput.includes('20'), true);
+  });
+
+  it('verbeux: condition sinon si', async () => {
+    const { outputs } = await execProg(`var x: entier
+x ← 5
+///verbeux
+si x > 10 alors
+  x ← 1
+sinon si x > 3 alors
+  x ← 2
+sinon
+  x ← 3
+finsi
+///finverbeux`);
+    const allOutput = outputs.join('');
+    assertContains(allOutput, 'Condition "si"');
+    assertContains(allOutput, '❌ faux');
+    assertContains(allOutput, 'Condition "sinon si"');
+    assertContains(allOutput, '✅ vrai');
+    assertContains(allOutput, 'x ← 2');
+  });
+
+  it('verbeux: restaure l\'état verbose après le bloc', async () => {
+    // Vérifier que le mode verbeux ne "fuit" pas en dehors du bloc
+    const result1 = await execProg(`var x: entier
+x ← 0
+///verbeux
+x ← 5
+///finverbeux
+Ecrire("fin")`);
+    const allOutput = result1.outputs.join('');
+    // Les marqueurs verbeux ne doivent apparaître qu'entre les balises
+    const debutCount = (allOutput.match(/▶ Début du bloc verbeux/g) || []).length;
+    const finCount = (allOutput.match(/◀ Fin du bloc verbeux/g) || []).length;
+    assertEqual(debutCount, 1);
+    assertEqual(finCount, 1);
+  });
+
+});
 
 // ============================================================
 // TEST RUNNER

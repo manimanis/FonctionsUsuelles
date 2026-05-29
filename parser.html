@@ -38,14 +38,24 @@
       </div>
     </div>
 
-    <div class="my-1">
-      <button class="btn btn-primary" @click="exec()">Exécuter</button>
+    <div class="my-1 d-flex gap-2 flex-wrap">
+      <button class="btn btn-primary" @click="exec()">▶ Exécuter</button>
+      <button class="btn btn-secondary" @click="stepExec()">⏭ Pas à pas</button>
+      <button class="btn btn-secondary" id="btn-step-next" disabled @click="stepNext()">⏩ Pas suivant</button>
+      <button class="btn btn-secondary" id="btn-step-resume" disabled @click="stepResume()">▶ Continuer</button>
+      <button class="btn btn-secondary" id="btn-step-stop" disabled @click="stepStop()">⏹ Arrêter</button>
     </div>
 
     <!-- Zone de sortie en temps réel -->
     <div class="my-1">
       <label for="sortie"><b>Sortie / Saisie</b></label>
       <div id="sortie" class="sortie-lire" placeholder="La sortie s'affichera ici..."></div>
+    </div>
+
+    <!-- Zone d'état des variables (pas à pas) -->
+    <div class="my-1" id="vars-panel" style="display:none;">
+      <label for="vars-display"><b>État des variables</b></label>
+      <div id="vars-display" class="sortie-lire" style="min-height:60px;"></div>
     </div>
   </main>
 

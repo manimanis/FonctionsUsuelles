@@ -43,13 +43,6 @@ function sendOutput(text) {
 
 function runProgram(program) {
   try {
-    // Detect directives
-    const directives = {};
-    if (/\/\/\/\s*verbeux/i.test(program)) {
-      directives.verbeux = true;
-    }
-    const verbose = directives.verbeux;
-
     const variables = {};
     const userTypes = {}; // Store type definitions (e.g. tab = tableau[20] réel)
     const userFunctions = {}; // Store user-defined functions
@@ -58,7 +51,7 @@ function runProgram(program) {
     const evaluator = new Evaluator({
       variables,
       outputFn: (text) => sendOutput(text),
-      verbose,
+      verbose: false, // Verbose est activé par bloc via ///verbeux ... ///finverbeux
       inputFn:(promptText) => waitForInput(promptText),
       userTypes,
       userFunctions,

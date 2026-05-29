@@ -57,6 +57,17 @@ class Lexer {
           matched = true;
           const value = match[0];
           const tokenPos = this.position;
+
+          // Vérifier si c'est un marqueur de bloc verbeux AVANT de traiter comme COMMENT
+          if (type === 'COMMENT' && value.startsWith('///')) {
+            const trimmed = value.trim().toLowerCase();
+            if (trimmed === '///verbeux') {
+              type = 'VERBOSE_START';
+            } else if (trimmed === '///finverbeux') {
+              type = 'VERBOSE_END';
+            }
+          }
+
           if (this.isEOL(type, value)) {
             type = "EOL";
           } else if (this.isAssignment(type, value)) {
@@ -102,7 +113,7 @@ class Lexer {
           }
 
           if (type !== 'WHITESPACE' && type !== 'COMMENT') {
-            const finalValue = (type === 'KEYWORD' || type === 'CONDITIONAL' || type === 'LOOP' || type === 'LOGICAL' || type === 'BOOLEAN' || type === 'TYPE_KW' || type === 'TYPE_DECL' || type === 'RETURN_KW' || type === 'FUNC_PROC_KW' || type === 'ALGO_KW' || type === 'BEGIN_KW') ? value.toLowerCase() : value;
+            const finalValue = (type === 'KEYWORD' || type === 'CONDITIONAL' || type === 'LOOP' || type === 'LOGICAL' || type === 'BOOLEAN' || type === 'TYPE_KW' || type === 'TYPE_DECL' || type === 'RETURN_KW' || type === 'FUNC_PROC_KW' || type === 'ALGO_KW' || type === 'BEGIN_KW' || type === 'VERBOSE_START' || type === 'VERBOSE_END') ? value.toLowerCase() : value;
             this.tokens.push({ type, value: finalValue, pos: tokenPos });
           }
           this.position += value.length;
@@ -259,6 +270,12 @@ class Parser {
         while (this.peek() && !this.isEOL()) this.pos++;
         continue;
       }
+
+      // Bloc verbeux : agréger toutes les instructions jusqu'à ///finverbeux
+      if (t.type === 'VERBOSE_START') {
+        this.statements.push(this.parseVerboseBlock());
+        continue;
+      }
       
       const stmt = this.parseStatement();
       if (stmt) { this.statements.push(stmt); } else { this.pos++; }
@@ -271,31 +288,27 @@ class Parser {
     if (t.type === 'ALGO_KW') return true;
     if (t.type === 'FUNC_PROC_KW') return true;
     if (t.type === 'BEGIN_KW') return true;
+    if (t.type === 'VERBOSE_START') return true;
     if (t.type === 'IDENTIFIER' && /^TDN?T$|^TDOG?$|^TDOL?$|^TDO$/.test(t.value.toUpperCase())) return true;
     return false;
   }
 
   // ── Sauter les lignes de documentation ──
-  // Si on rencontre TDNT, TDOG, TDOL, TDO ou Objet, on ignore jusqu'à la fin de la ligne
   skipDocLines() {
     while (true) {
       this.skipEOL();
       const t = this.peek();
       if (!t || t.type !== 'IDENTIFIER') break;
       if (!/^TDNT$|^TDOG$|^TDOL$|^TDO$|^objet$/i.test(t.value)) break;
-      // Ignorer le mot-clé et le reste de la ligne
       while (this.peek() && !this.isEOL()) {
         this.pos++;
       }
     }
   }
 
-  // Skip doc lines + déclarations var/type, puis consume BEGIN_KW
-  // Returns the pre-declarations so they can be executed in the module's body
   skipToBegin() {
     this.skipDocLines();
     const decls = [];
-    // Parser les déclarations var/type légitimes entre ici et Début
     while (this.peek() && (this.peek().type === 'VAR_KW' || (this.peek().type === 'TYPE_DECL' && this.peek().value === 'type'))) {
       if (this.peek().type === 'VAR_KW') {
         decls.push(this.parseVarDeclaration());
@@ -318,6 +331,29 @@ class Parser {
     return this.consume();
   }
 
+  // ── Parser un bloc verbeux ──
+  parseVerboseBlock() {
+    this.consume();
+    this.skipEOL();
+    const body = [];
+    while (this.pos < this.tokens.length) {
+      this.skipEOL();
+      if (!this.peek()) break;
+      this.preprocessToken();
+      const t = this.peek();
+      if (t.type === 'VERBOSE_END') {
+        this.consume();
+        break;
+      }
+      if (t.type === 'VERBOSE_START') {
+        throw new Error(this.errorAtToken("Les blocs ///verbeux ne peuvent pas être imbriqués"));
+      }
+      const stmt = this.parseStatement();
+      if (stmt) { body.push(stmt); } else { this.pos++; }
+    }
+    return { type: 'verboseBlock', body };
+  }
+
   parseAlgorithm() {
     this.expectValue('ALGO_KW', 'algorithme'); this.skipEOL();
     const name = this.expect('IDENTIFIER').value; this.skipEOL();
@@ -335,8 +371,7 @@ class Parser {
   }
 
   parseProcedure() {
-    this.consume(); // procédure/procedure
-    this.skipEOL();
+    this.consume(); this.skipEOL();
     const name = this.expect('IDENTIFIER').value; this.skipEOL();
     let params = [];
     if (this.peek() && this.peek().type === 'OPEN_PAR') {
@@ -351,8 +386,7 @@ class Parser {
   }
 
   parseFunction() {
-    this.consume(); // fonction
-    this.skipEOL();
+    this.consume(); this.skipEOL();
     const name = this.expect('IDENTIFIER').value; this.skipEOL();
     let params = [];
     if (this.peek() && this.peek().type === 'OPEN_PAR') {
@@ -413,13 +447,11 @@ class Parser {
     if (this.peek() && this.peek().type === 'VAR_KW') {
       return this.parseVarDeclaration();
     }
-    // Déclaration implicite sans "var": identifiant : type
     if (this.peek() && this.peek(1) && this.peek(2) && 
         this.peek().type === 'IDENTIFIER' && this.peek(1).type === 'COLON' && 
         (this.peek(2).type === 'TYPE_KW' || this.peek(2).type === 'IDENTIFIER')) {
       return this.parseImplicitVarDeclaration();
     }
-    // Déclaration implicite sans "type": identifiant = tableau de type
     if (this.peek() && this.peek(1) && this.peek(2) && this.peek(3) && this.peek(4) &&
         this.peek().type === 'IDENTIFIER' && 
         this.peek(1).type === 'COMPARISON' && this.peek(1).value === '=' && 
@@ -496,7 +528,6 @@ class Parser {
     return { type: 'varDeclaration', varNames, varType, typeName };
   }
 
-  // ── Déclaration implicite de variable: identifiant : type (sans "var") ──
   parseImplicitVarDeclaration() {
     const varNames = [this.expect('IDENTIFIER').value]; this.skipEOL();
     this.expect('COLON'); this.skipEOL();
@@ -510,13 +541,10 @@ class Parser {
     return { type: 'varDeclaration', varNames, varType, typeName };
   }
 
-  // ── Déclaration implicite de type: identifiant = tableau de taille type (sans "type") ──
   parseImplicitTypeDeclaration() {
     const typeName = this.expect('IDENTIFIER').value; this.skipEOL();
-    this.expect('COMPARISON'); // '='
-    this.skipEOL();
-    this.consume(); // 'tableau' (TYPE_KW)
-    this.skipEOL();
+    this.expect('COMPARISON'); this.skipEOL();
+    this.consume(); this.skipEOL();
     this.expectValue('LOOP', 'de'); this.skipEOL();
     const sizeToken = this.peek();
     if (!sizeToken || sizeToken.type !== 'NUMBER' || sizeToken.value.indexOf('.') !== -1) {
@@ -533,9 +561,8 @@ class Parser {
     const varName = this.expect('IDENTIFIER').value; this.skipEOL();
     this.expectValue('LOOP', 'de'); this.skipEOL();
     const start = this.parseExpression(); this.skipEOL();
-    // Accepter "à" (LOOP) ou "a" (IDENTIFIER) comme mot-clé de la boucle
     if (this.peek() && this.peek().type === 'IDENTIFIER' && this.peek().value.toLowerCase() === 'a') {
-      this.consume(); // consommer "a" comme "à"
+      this.consume();
     } else {
       this.expectValue('LOOP', 'à');
     }
@@ -670,6 +697,7 @@ class Parser {
 
       if (t === 'TYPE_DECL' && v === 'type') { body.push(this.parseTypeDeclaration()); continue; }
       if (t === 'VAR_KW') { body.push(this.parseVarDeclaration()); continue; }
+      if (t === 'VERBOSE_START') { body.push(this.parseVerboseBlock()); continue; }
 
       const stmt = this.parseStatement();
       if (stmt) { body.push(stmt); } else { this.pos++; }
@@ -891,6 +919,9 @@ class Evaluator {
       this.userProcedures = config.userProcedures || {};
       this.currentReturn = undefined;
       this.returned = false;
+      // Step mode support
+      this.stepMode = config.stepMode || false;
+      this._stepResolve = null;
     } else {
       const args = Array.from(arguments);
       this.variables = args[0] || {};
@@ -905,6 +936,28 @@ class Evaluator {
       this.userProcedures = {};
       this.currentReturn = undefined;
       this.returned = false;
+      this.stepMode = false;
+      this._stepResolve = null;
+    }
+  }
+
+  /**
+   * Wait for resumeStep() to be called (when in stepMode)
+   */
+  async _waitForStep() {
+    if (!this.stepMode) return;
+    return new Promise((resolve) => {
+      this._stepResolve = resolve;
+    });
+  }
+
+  /**
+   * Resume execution after a step
+   */
+  resumeStep() {
+    if (this._stepResolve) {
+      this._stepResolve();
+      this._stepResolve = null;
     }
   }
 
@@ -922,8 +975,7 @@ class Evaluator {
       if (origOutput) origOutput(text);
     };
     
-    // Séparer les statements en catégories
-    const mainStatements = []; // programme principal (instructions seules)
+    const mainStatements = [];
     let hasAlgorithmBlock = false;
     
     for (const stmt of parser.statements) {
@@ -931,18 +983,14 @@ class Evaluator {
         hasAlgorithmBlock = true;
         mainStatements.push(stmt);
       } else if (stmt.type === 'functionDef' || stmt.type === 'procedureDef') {
-        // Les définitions de modules sont toujours exécutées (pour être enregistrées)
         await this.evaluate(stmt);
       } else {
-        // Instructions hors modules et hors Algorithme
         if (!hasAlgorithmBlock) {
           mainStatements.push(stmt);
         }
-        // Si un bloc Algorithme existe, les instructions hors modules sont ignorées
       }
     }
     
-    // Exécuter le programme principal
     for (const stmt of mainStatements) {
       await this.evaluate(stmt);
     }
@@ -993,8 +1041,39 @@ class Evaluator {
     }
   }
 
+  showVariablesState() {
+    if (!this.outputFn) return;
+    const entries = Object.entries(this.variables).filter(([k]) => !k.startsWith('_'));
+    if (entries.length === 0) {
+      this.outputFn('<span class="step-state">📊 Variables : (aucune)</span>');
+      return;
+    }
+    const parts = entries.map(([k, v]) => {
+      if (Array.isArray(v)) {
+        return k + ' = [' + v.map(el => this.formatValue(el)).join(', ') + ']';
+      }
+      return k + ' = ' + this.formatValue(v);
+    });
+    this.outputFn('<span class="step-state">📊 Variables : ' + parts.join(', ') + '</span>');
+  }
+
   async evaluate(node) {
     if (!node) return null;
+    
+    // In step mode, wait after each statement-level evaluation
+    const isStepStatement = this.stepMode && (
+      node.type === 'assignment' ||
+      node.type === 'arrayAssignment' ||
+      node.type === 'varDeclaration' ||
+      node.type === 'typeDeclaration' ||
+      node.type === 'functionCall' ||
+      node.type === 'return'
+    );
+
+    if (isStepStatement) {
+      await this._waitForStep();
+    }
+
     switch (node.type) {
       case 'number': return node.value;
       case 'string': return node.value;
@@ -1059,23 +1138,19 @@ class Evaluator {
       }
       case 'functionDef': {
         this.userFunctions[node.name.toLowerCase()] = node;
-        if (this.outputFn && this.verbose) {
-          this.outputFn('Fonction "' + node.name + '" définie');
-        }
         return null;
       }
       case 'procedureDef': {
         this.userProcedures[node.name.toLowerCase()] = node;
-        if (this.outputFn && this.verbose) {
-          this.outputFn('Procédure "' + node.name + '" définie');
-        }
         return null;
       }
+      case 'verboseBlock': return await this.evaluateVerboseBlock(node);
       case 'conditional': return await this.evaluateConditional(node);
       case 'forLoop': return await this.evaluateForLoop(node);
       case 'whileLoop': return await this.evaluateWhileLoop(node);
       case 'repeatLoop': return await this.evaluateRepeatLoop(node);
       case 'arrayAssignment': {
+        if (this.stepMode) await this._waitForStep();
         return await this.evaluateArrayAssignment(node);
       }
       case 'assignment': {
@@ -1092,9 +1167,6 @@ class Evaluator {
           elementType: node.elementType,
           size: node.arraySize
         };
-        if (this.verbose && this.outputFn) {
-          this.outputFn('Type "' + node.typeName + '" défini : tableau[' + node.arraySize + '] de ' + node.elementType);
-        }
         return null;
       }
       case 'varDeclaration': {
@@ -1117,9 +1189,6 @@ class Evaluator {
           this.varTypes[varName] = actualType;
           if (value !== null) {
             this.variables[varName] = value;
-            if (this.verbose && this.outputFn) {
-              this.outputFn('<span class="step-assign">' + varName + ' initialisé (' + (node.varType || node.typeName) + ')</span>');
-            }
           }
         }
         return null;
@@ -1141,14 +1210,42 @@ class Evaluator {
     }
   }
 
+  async evaluateVerboseBlock(node) {
+    const savedVerbose = this.verbose;
+    this.verbose = true;
+    if (this.outputFn) {
+      this.outputFn('<span class="step-verbose-header">▶ Début du bloc verbeux</span>');
+    }
+    for (const stmt of node.body) {
+      await this.evaluate(stmt);
+      if (this.returned) break;
+    }
+    if (this.outputFn) {
+      this.outputFn('<span class="step-verbose-header">◀ Fin du bloc verbeux</span>');
+    }
+    this.verbose = savedVerbose;
+    return null;
+  }
+
   async evaluateConditional(node) {
     const cond = await this.evaluate(node.condition);
+    if (this.verbose && this.outputFn) {
+      this.outputFn('<span class="step-condition">🔹 Condition "si" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
+    }
     if (cond) { for (const stmt of node.thenBody) { await this.evaluate(stmt); if (this.returned) return null; } return null; }
     for (const elseifBranch of node.elseIfBranches) {
       const elseifCond = await this.evaluate(elseifBranch.condition);
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-condition">🔹 Condition "sinon si" → ' + (elseifCond ? '✅ vrai' : '❌ faux') + '</span>');
+      }
       if (elseifCond) { for (const stmt of elseifBranch.body) { await this.evaluate(stmt); if (this.returned) return null; } return null; }
     }
-    if (node.elseBody) { for (const stmt of node.elseBody) { await this.evaluate(stmt); if (this.returned) return null; } }
+    if (node.elseBody) {
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-condition">🔹 Branche "sinon" exécutée</span>');
+      }
+      for (const stmt of node.elseBody) { await this.evaluate(stmt); if (this.returned) return null; }
+    }
     return null;
   }
 
@@ -1166,6 +1263,9 @@ class Evaluator {
     if (step > 0) {
       for (let i = start; i <= end; i += step) { 
         this.variables[node.varName] = i; 
+        if (this.verbose && this.outputFn) {
+          this.outputFn('<span class="step-loop">🔄 Boucle Pour : ' + node.varName + ' = ' + i + '</span>');
+        }
         for (const stmt of node.body) { 
           await this.evaluate(stmt); 
           if (this.returned) return null;
@@ -1174,6 +1274,9 @@ class Evaluator {
     } else {
       for (let i = start; i >= end; i += step) { 
         this.variables[node.varName] = i; 
+        if (this.verbose && this.outputFn) {
+          this.outputFn('<span class="step-loop">🔄 Boucle Pour : ' + node.varName + ' = ' + i + '</span>');
+        }
         for (const stmt of node.body) { 
           await this.evaluate(stmt); 
           if (this.returned) return null;
@@ -1185,12 +1288,18 @@ class Evaluator {
 
   async evaluateWhileLoop(node) {
     let cond = await this.evaluate(node.condition);
+    if (this.verbose && this.outputFn) {
+      this.outputFn('<span class="step-condition">🔹 Condition "tant que" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
+    }
     while (cond) {
       for (const stmt of node.body) { 
         await this.evaluate(stmt); 
         if (this.returned) return null;
       }
       cond = await this.evaluate(node.condition);
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-condition">🔹 Condition "tant que" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
+      }
     }
     return null;
   }
@@ -1202,6 +1311,9 @@ class Evaluator {
         if (this.returned) return null;
       }
       const cond = await this.evaluate(node.condition);
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-condition">🔹 Condition "jusqu\'à" → ' + (cond ? '✅ vrai (arrêt)' : '❌ faux (continuation)') + '</span>');
+      }
       if (cond) return null;
     } while (true);
   }
@@ -1220,6 +1332,9 @@ class Evaluator {
         arr[idx] = value;
         this.variables[target.name] = arr;
       }
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-assign">' + target.name + '[' + idx + '] ← ' + this.formatValue(value) + '</span>');
+      }
       return value;
     }
     if (target.type === 'indexExpr') {
@@ -1235,6 +1350,9 @@ class Evaluator {
           parentArr[parentIdx] = container;
           this.variables[target.expression.name] = parentArr;
         }
+      }
+      if (this.verbose && this.outputFn) {
+        this.outputFn('<span class="step-assign">tableau[...] ← ' + this.formatValue(value) + '</span>');
       }
       return value;
     }
@@ -1274,49 +1392,40 @@ class Evaluator {
 
   mod(a, b) { return ((a % b) + b) % b; }
 
-  // ── Appel de procédure utilisateur avec isolement de portée ──
   async callUserProcedure(node) {
     const procDef = this.userProcedures[node.funcName.toLowerCase()];
     if (!procDef) throw new Error(`Procédure inconnue : ${node.funcName}`);
     
-    // Sauvegarder l'état global AVANT l'appel
     const savedVars = {...this.variables};
     const savedTypes = {...this.varTypes};
     
-    // Lier les paramètres
-    const byRefOrigins = {}; // param name → original variable name for byRef params
+    const byRefOrigins = {};
     if (procDef.params && node.args) {
       for (let i = 0; i < procDef.params.length && i < node.args.length; i++) {
         const param = procDef.params[i];
         const arg = node.args[i];
         if (param.byRef) {
-          // Passage par adresse : lier le paramètre formel à la variable d'origine
           if (arg.type === 'identifier') {
             const origName = arg.name;
-            // Le paramètre formel recoit la référence à la variable d'origine
             this.variables[param.name] = savedVars[origName];
             byRefOrigins[param.name] = origName;
           } else {
             this.variables[param.name] = await this.evaluate(arg);
           }
         } else {
-          // Passage par valeur
           this.variables[param.name] = await this.evaluate(arg);
         }
       }
     }
     
-    // Exécuter le corps de la procédure
     for (const stmt of procDef.body) {
       await this.evaluate(stmt);
     }
     
-    // Après exécution : synchroniser les byRef vers l'original, puis restaurer le reste
     for (const [localName, origName] of Object.entries(byRefOrigins)) {
       savedVars[origName] = this.variables[localName];
     }
     
-    // Restaurer toutes les variables sauf les byRef déjà synchronisées
     for (const key of Object.keys(this.variables)) {
       if (!(key in byRefOrigins)) {
         delete this.variables[key];
@@ -1325,7 +1434,6 @@ class Evaluator {
     for (const [key, val] of Object.entries(savedVars)) {
       this.variables[key] = val;
     }
-    // Restaurer les types
     for (const key of Object.keys(this.varTypes)) {
       if (!(key in byRefOrigins)) {
         delete this.varTypes[key];
@@ -1338,7 +1446,6 @@ class Evaluator {
     return null;
   }
 
-  // ── Appel de fonction utilisateur avec isolement de portée ──
   async callUserFunction(node) {
     const funcDef = this.userFunctions[node.funcName.toLowerCase()];
     if (!funcDef) throw new Error(`Fonction inconnue : ${node.funcName}`);
@@ -1376,7 +1483,6 @@ class Evaluator {
     this.returned = false;
     this.currentReturn = undefined;
     
-    // Synchroniser byRef, puis restaurer l'état global
     for (const [localName, origName] of Object.entries(byRefOrigins)) {
       savedVars[origName] = this.variables[localName];
     }
