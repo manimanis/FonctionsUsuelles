@@ -1,0 +1,123 @@
+/* ── CodeMirror dark theme matching project variables ── */
+
+.cm-s-algo-theme.CodeMirror {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #1a1e28;
+  color: #e8eaf0;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  height: auto;
+  min-height: 390px;
+}
+
+.cm-s-algo-theme .CodeMirror-gutters {
+  background: #13161e;
+  border-right: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px 0 0 8px;
+}
+
+.cm-s-algo-theme .CodeMirror-linenumber {
+  color: #4a5068;
+  padding: 0 8px;
+}
+
+.cm-s-algo-theme .CodeMirror-cursor {
+  border-left: 2px solid #63b3ed;
+}
+
+.cm-s-algo-theme .CodeMirror-selected {
+  background: rgba(99,179,237,0.15);
+}
+
+.cm-s-algo-theme .CodeMirror-activeline-background {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Tokens */
+.cm-s-algo-theme span.cm-keyword {
+  color: #63b3ed;
+  font-weight: 600;
+}
+
+.cm-s-algo-theme span.cm-builtin {
+  color: #f6d365;
+}
+
+.cm-s-algo-theme span.cm-string {
+  color: #68d391;
+}
+
+.cm-s-algo-theme span.cm-number {
+  color: #f6ad55;
+}
+
+.cm-s-algo-theme span.cm-comment {
+  color: #4a5068;
+  font-style: italic;
+}
+
+.cm-s-algo-theme span.cm-operator {
+  color: #fc8181;
+}
+
+.cm-s-algo-theme span.cm-variable {
+  color: #e8eaf0;
+}
+
+.cm-s-algo-theme span.cm-variable-2 {
+  color: #e8eaf0;
+}
+
+.cm-s-algo-theme span.cm-atom {
+  color: #9f7aea;
+}
+
+.cm-s-algo-theme span.cm-def {
+  color: #e8eaf0;
+}
+
+.cm-s-algo-theme span.cm-error {
+  color: #fc8181;
+  background: rgba(252,129,129,0.12);
+}
+
+/* ── Autocomplete popup ── */
+.CodeMirror-hints {
+  position: absolute;
+  z-index: 10;
+  overflow: hidden;
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: #1a1e28;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  max-height: 20em;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.CodeMirror-hints .CodeMirror-hint {
+  margin: 0;
+  padding: 4px 12px;
+  white-space: pre;
+  color: #e8eaf0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+li.CodeMirror-hint-active {
+  background: rgba(99,179,237,0.15);
+  color: #63b3ed;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .cm-s-algo-theme.CodeMirror {
+    min-height: 280px;
+  }
+}

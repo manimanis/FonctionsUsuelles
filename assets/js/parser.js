@@ -18,6 +18,7 @@
 let executionWorker = null;
 let stepEvaluator = null;
 let stepRunning = false;
+let editor = null; // CodeMirror instance
 
 function createExecutionWorker(outputEl) {
   // Terminer l'ancien worker s'il existe
@@ -89,7 +90,7 @@ function clearOutputArea(outputEl) {
 }
 
 /**
- * Affiche l'état des variables dans le panneau dédié
+ * Affiche l'état des variables dans l'en-tête du panneau de sortie
  */
 function updateVarsDisplay(variables) {
   const varsDisplay = document.getElementById('vars-display');
@@ -97,7 +98,7 @@ function updateVarsDisplay(variables) {
   
   const entries = Object.entries(variables).filter(([k]) => !k.startsWith('_'));
   if (entries.length === 0) {
-    varsDisplay.innerHTML = '<span class="step-state">(aucune variable)</span>';
+    varsDisplay.textContent = '';
     return;
   }
   
@@ -109,12 +110,12 @@ function updateVarsDisplay(variables) {
       return String(val);
     };
     if (Array.isArray(v)) {
-      return k + ' = [' + v.map(el => fmt(el)).join(', ') + ']';
+      return k + '=[' + v.map(el => fmt(el)).join(',') + ']';
     }
-    return k + ' = ' + fmt(v);
+    return k + '=' + fmt(v);
   });
   
-  varsDisplay.innerHTML = '<span class="step-state">📊 ' + parts.join('<br>📊 ') + '</span>';
+  varsDisplay.textContent = '📊 ' + parts.join('  ');
 }
 
 function setStepButtons(enabled) {
@@ -123,10 +124,12 @@ function setStepButtons(enabled) {
   document.getElementById('btn-step-stop').disabled = !enabled;
 }
 
-const app = new Vue({
-  el: '#app',
-  data: {
-    program: `type Tab1 = Tableau de 50 chaine
+// ── Initialize CodeMirror ──
+function initCodeMirror() {
+  const container = document.getElementById('editor-container');
+  if (!container) return;
+
+  const defaultProgram = `type Tab1 = Tableau de 50 chaine
 var n : entier
 var t : Tab1
 
@@ -141,10 +144,10 @@ Fin
 Procédure Remplir(@t: Tab, n: entier)
 Début
   Pour i de 0 à n-1 Faire
-    t[i] ← ""
-    Pour j de 0 à aléa(5, 10) Faire
-      t[i] ← t[i] + chr(aléa(65, 90))
-    Fin Pour
+    Repeter
+      Ecrire("Entrez t[", i, "] ? ")
+      Lire(t[i])
+    Jusqu'à Verif(t[i])
   Fin Pour
 Fin
 
@@ -203,12 +206,56 @@ Algorithme PP
 Début
   Saisir(n)
   Remplir(t, n)
-  Afficher(t, n)
   x ← Calc(n)
   Ecrire("x = ", x)
   Trier(t, n)
   Afficher(t, n)
-Fin`,
+Fin`;
+
+  editor = CodeMirror(container, {
+    value: defaultProgram,
+    mode: 'algorithm',
+    theme: 'algo-theme',
+    lineNumbers: true,
+    lineWrapping: false,
+    indentUnit: 2,
+    tabSize: 2,
+    indentWithTabs: false,
+    electricChars: true,
+    extraKeys: {
+      'Ctrl-Space': function(cm) {
+        CodeMirror.commands.autocomplete(cm);
+      },
+      'Tab': function(cm) {
+        cm.replaceSelection('  ', 'end');
+      },
+    },
+    hintOptions: {
+      hint: CodeMirror.hint.algorithm,
+      completeSingle: false,
+    },
+  });
+
+  // Trigger autocomplete while typing
+  editor.on('inputRead', function(cm, change) {
+    if (change.text && change.text.length > 0 && /\w/.test(change.text[change.text.length - 1])) {
+      CodeMirror.commands.autocomplete(cm, null, { completeSingle: false });
+    }
+  });
+
+  // Trigger autocomplete on '.' (not used often but helpful)
+  editor.on('keyup', function(cm, event) {
+    // Trigger hint on letters only (not on backspace/delete)
+    const key = event.key;
+    if (key && key.length === 1 && /[a-zA-Zàâäéèêëîïôöùûü]/.test(key)) {
+      // Already handled by inputRead above
+    }
+  });
+}
+
+const app = new Vue({
+  el: '#app',
+  data: {
     instructions: [],
     outputHistory: []
   },
@@ -219,15 +266,8 @@ Fin`,
       if (value === null || value === undefined) return 'null';
       return String(value);
     },
-    highlightCode: function() {
-      setTimeout(() => {
-        const codeEl = document.getElementById('highlighted-code');
-        if (!codeEl) return;
-        const textarea = document.getElementById('algo');
-        if (!textarea) return;
-        codeEl.textContent = textarea.value || '';
-        hljs.highlightBlock(codeEl);
-      }, 0);
+    getProgram: function() {
+      return editor ? editor.getValue() : '';
     },
     exec() {
       const outputArea = document.getElementById('sortie');
@@ -236,8 +276,8 @@ Fin`,
         return;
       }
 
-      // Cacher le panneau de variables
-      document.getElementById('vars-panel').style.display = 'none';
+      // Cacher les variables
+      document.getElementById('vars-display').textContent = '';
       setStepButtons(false);
       stepRunning = false;
       stepEvaluator = null;
@@ -249,7 +289,7 @@ Fin`,
       const worker = createExecutionWorker(outputArea);
 
       // Lancer le programme
-      worker.postMessage({ type: 'execute', program: this.program });
+      worker.postMessage({ type: 'execute', program: this.getProgram() });
     },
 
     // ═══════════════════════════════════
@@ -268,10 +308,8 @@ Fin`,
       // Vider la sortie
       outputArea.innerHTML = '';
       
-      // Afficher le panneau de variables
-      const varsPanel = document.getElementById('vars-panel');
-      varsPanel.style.display = 'block';
-      document.getElementById('vars-display').innerHTML = '<span class="step-state">⏳ Initialisation...</span>';
+      // Afficher l'état des variables dans l'en-tête
+      document.getElementById('vars-display').textContent = '⏳ Initialisation...';
       
       // Activer les boutons de contrôle
       setStepButtons(true);
@@ -324,8 +362,10 @@ Fin`,
           stepMode: true
         });
         
+        const program = this.getProgram();
+        
         // Tokenizer et parser
-        const lexer = new Lexer(this.program);
+        const lexer = new Lexer(program);
         const tokens = lexer.tokenize();
         const parser = new Parser(tokens, lexer);
         
@@ -405,4 +445,9 @@ Fin`,
       }
     }
   }
+});
+
+// Initialiser CodeMirror après le chargement du DOM
+document.addEventListener('DOMContentLoaded', function() {
+  initCodeMirror();
 });
