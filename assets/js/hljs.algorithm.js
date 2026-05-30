@@ -21,7 +21,7 @@ hljs.registerLanguage('algorithm', (hljs) => {
       // Fonctions de manipulation de caractères
       'chr', 'ord',
       // Fonctions mathématiques
-      'arrondi', 'racine', 'alea', 'abs', 'ent',
+      'arrondi', 'racine', 'alea', 'aléa', 'abs', 'ent',
       // Fonctions de chaînes
       'long', 'pos', 'convch', 'convch', 'estnum', 'estnum',
       'valeur', 'sous_chaine', 'effacer', 'majus',
@@ -90,8 +90,6 @@ hljs.registerLanguage('algorithm', (hljs) => {
   const COMMENT = {
     className: 'comment',
     variants: [
-      // Directive ///verbeux
-      { begin: /\/\/\/.*/, relevance: 1 },
       // Commentaire //
       { begin: /\/\/.*/, relevance: 0 },
       // Commentaire #

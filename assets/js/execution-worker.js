@@ -51,7 +51,6 @@ function runProgram(program) {
     const evaluator = new Evaluator({
       variables,
       outputFn: (text) => sendOutput(text),
-      verbose: false, // Verbose est activé par bloc via ///verbeux ... ///finverbeux
       inputFn:(promptText) => waitForInput(promptText),
       userTypes,
       userFunctions,

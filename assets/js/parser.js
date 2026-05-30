@@ -123,33 +123,92 @@ function setStepButtons(enabled) {
   document.getElementById('btn-step-stop').disabled = !enabled;
 }
 
-function detectDirectives(program) {
-  const directives = {};
-  if (/\/\/\/\s*verbeux/i.test(program)) { directives.verbeux = true; }
-  return directives;
-}
-
 const app = new Vue({
   el: '#app',
   data: {
-    program: `var n, i : entier
-var s : reel
+    program: `type Tab1 = Tableau de 50 chaine
+var n : entier
+var t : Tab1
 
-///verbeux
-Ecrire("Entrez n : ")
-Lire(n)
-s ← 0
-Pour i de 1 à n Faire
-  s ← s + i
-Fin Pour
-Ecrire("La somme est : ", s)
+Procédure Saisir(@n: entier)
+Début
+  Repeter
+    Ecrire("Entrez n ? ")
+    Lire(n)
+  Jusqu'à 5 <= n <= 50
+Fin
 
-Si s > 10 Alors
-  Ecrire("s est supérieur à 10")
-Sinon
-  Ecrire("s est inférieur ou égal à 10")
-Fin Si
-///finverbeux`,
+Procédure Remplir(@t: Tab, n: entier)
+Début
+  Pour i de 0 à n-1 Faire
+    t[i] ← ""
+    Pour j de 0 à aléa(5, 10) Faire
+      t[i] ← t[i] + chr(aléa(65, 90))
+    Fin Pour
+  Fin Pour
+Fin
+
+Fonction Verif(ch: chaine): booleen
+var i : entier
+Début
+  test ← Long(ch) > 0
+  i ← 0
+  Tant Que test ET i < Long(ch) Faire
+    Si "A" <= Majus(ch[i]) ET Majus(ch[i]) <= "Z" Alors
+      test ← vrai
+    Sinon
+      test ← faux
+    Fin Si
+    i ← i + 1
+  Fin Tant Que
+  Retourner test
+Fin
+
+Fonction Calc(n: entier): entier
+var s, i : entier
+Début
+  s ← 0
+  Pour i de 0 à n-1 Faire
+    s ← s + i
+  Fin Pour
+  Retourner s
+Fin
+
+Procédure Trier(@t: Tab, n: entier)
+Début
+  // Tri par sélection
+  Pour i de 0 à n-2 Faire
+    min ← i
+    Pour j de i+1 à n-1 Faire
+      Si Long(t[j]) < Long(t[min]) Alors
+        min ← j
+      Fin Si
+    Fin Pour
+    Si min ≠ i Alors
+      temp ← t[i]
+      t[i] ← t[min]
+      t[min] ← temp
+    Fin Si
+  Fin Pour
+Fin
+
+Procédure Afficher(t: Tab, n: entier)
+Début
+  Pour i de 0 à n-1 Faire
+    Ecrire(t[i])
+  Fin Pour
+Fin
+
+Algorithme PP
+Début
+  Saisir(n)
+  Remplir(t, n)
+  Afficher(t, n)
+  x ← Calc(n)
+  Ecrire("x = ", x)
+  Trier(t, n)
+  Afficher(t, n)
+Fin`,
     instructions: [],
     outputHistory: []
   },
@@ -231,7 +290,6 @@ Fin Si
             outputArea.innerHTML += text + '<br>';
             outputArea.scrollTop = outputArea.scrollHeight;
           },
-          verbose: false,
           inputFn: (promptText) => {
             return new Promise((resolve) => {
               // Créer un champ de saisie dans la sortie
@@ -287,13 +345,13 @@ Fin Si
         }
         
         // Exécuter en boucle asynchrone
-        outputArea.innerHTML += '<span class="step-verbose-header">▶ Début de l\'exécution pas à pas</span><br>';
+        outputArea.innerHTML += '<span class="step-state">▶ Début de l\'exécution pas à pas</span><br>';
         
         try {
           for (const stmt of mainStatements) {
             await stepEvaluator.evaluate(stmt);
           }
-          outputArea.innerHTML += '<br><span class="step-verbose-header">◀ Fin de l\'exécution</span><br>';
+          outputArea.innerHTML += '<br><span class="step-state">◀ Fin de l\'exécution</span><br>';
           outputArea.innerHTML += '<br>--- Exécution terminée ---<br>';
         } catch (err) {
           outputArea.innerHTML += '<br>✖ Erreur : ' + err.message + '<br>';

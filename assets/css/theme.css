@@ -841,15 +841,6 @@ textarea#algo {
 .hljs-meta { color: var(--accent2); }
 .hljs-meta-string { color: var(--accent2); }
 
-/* ── Mode verbeux (verbose output from algorithm interpreter) ── */
-.step-verbose-header {
-  display: block;
-  color: var(--accent2);
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 2px 0;
-  margin: 4px 0;
-}
 .step-state {
   display: block;
   color: var(--accent3);

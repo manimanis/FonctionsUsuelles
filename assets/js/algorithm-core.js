@@ -29,9 +29,9 @@ class Lexer {
     ['OPERATOR', /^[←+\-*/=<>!@∈≠≥≤]+/],
     ['STRING', /^"(.*?)"|^'(.*?)'/],
     ['RANGE', /^\.\./],
-    ['PUNCTUATION', /^[\.{}()[\],;:]/],
+    ['PUNCTUATION', /^[\.{}()\[\],;:]/],
     ['KEYWORD', /^(algorithme|début|debut|mod|div|fin|tant|que|si|alors|sinon|r[ée]p[ée]ter|pour|de|à|faire|retourner|retourne|fonction|procédure|procedure|var|type|tableau|entier|r['\u00e9e]el|bool['\u00e9e]en|cha[îi]ne|caract['\u00e8e]re|vrai|faux|et|ou|non|pas|jusqua)(?![a-zA-Z0-9_àâäéèêëîïôöùûü])/i],
-    ['IDENTIFIER', /^[a-zA-Z_àâäéèêëîïôöùûü]\w*/],
+    ['IDENTIFIER', /^[a-zA-Z_àâäéèêëîïôöùûü][a-zA-Z0-9_àâäéèêëîïôöùûü]*/],
   ];
 
   getPosition(pos) {
@@ -57,16 +57,6 @@ class Lexer {
           matched = true;
           const value = match[0];
           const tokenPos = this.position;
-
-          // Vérifier si c'est un marqueur de bloc verbeux AVANT de traiter comme COMMENT
-          if (type === 'COMMENT' && value.startsWith('///')) {
-            const trimmed = value.trim().toLowerCase();
-            if (trimmed === '///verbeux') {
-              type = 'VERBOSE_START';
-            } else if (trimmed === '///finverbeux') {
-              type = 'VERBOSE_END';
-            }
-          }
 
           if (this.isEOL(type, value)) {
             type = "EOL";
@@ -113,7 +103,7 @@ class Lexer {
           }
 
           if (type !== 'WHITESPACE' && type !== 'COMMENT') {
-            const finalValue = (type === 'KEYWORD' || type === 'CONDITIONAL' || type === 'LOOP' || type === 'LOGICAL' || type === 'BOOLEAN' || type === 'TYPE_KW' || type === 'TYPE_DECL' || type === 'RETURN_KW' || type === 'FUNC_PROC_KW' || type === 'ALGO_KW' || type === 'BEGIN_KW' || type === 'VERBOSE_START' || type === 'VERBOSE_END') ? value.toLowerCase() : value;
+            const finalValue = (type === 'KEYWORD' || type === 'CONDITIONAL' || type === 'LOOP' || type === 'LOGICAL' || type === 'BOOLEAN' || type === 'TYPE_KW' || type === 'TYPE_DECL' || type === 'RETURN_KW' || type === 'FUNC_PROC_KW' || type === 'ALGO_KW' || type === 'BEGIN_KW') ? value.toLowerCase() : value;
             this.tokens.push({ type, value: finalValue, pos: tokenPos });
           }
           this.position += value.length;
@@ -271,12 +261,6 @@ class Parser {
         continue;
       }
 
-      // Bloc verbeux : agréger toutes les instructions jusqu'à ///finverbeux
-      if (t.type === 'VERBOSE_START') {
-        this.statements.push(this.parseVerboseBlock());
-        continue;
-      }
-      
       const stmt = this.parseStatement();
       if (stmt) { this.statements.push(stmt); } else { this.pos++; }
     }
@@ -288,7 +272,6 @@ class Parser {
     if (t.type === 'ALGO_KW') return true;
     if (t.type === 'FUNC_PROC_KW') return true;
     if (t.type === 'BEGIN_KW') return true;
-    if (t.type === 'VERBOSE_START') return true;
     if (t.type === 'IDENTIFIER' && /^TDN?T$|^TDOG?$|^TDOL?$|^TDO$/.test(t.value.toUpperCase())) return true;
     return false;
   }
@@ -329,29 +312,6 @@ class Parser {
       throw new Error(this.errorAtToken(`Attendu BEGIN_KW("début"|"debut"), obtenu ${t ? t.type + '("' + t.value + '")' : 'fin de fichier'}`));
     }
     return this.consume();
-  }
-
-  // ── Parser un bloc verbeux ──
-  parseVerboseBlock() {
-    this.consume();
-    this.skipEOL();
-    const body = [];
-    while (this.pos < this.tokens.length) {
-      this.skipEOL();
-      if (!this.peek()) break;
-      this.preprocessToken();
-      const t = this.peek();
-      if (t.type === 'VERBOSE_END') {
-        this.consume();
-        break;
-      }
-      if (t.type === 'VERBOSE_START') {
-        throw new Error(this.errorAtToken("Les blocs ///verbeux ne peuvent pas être imbriqués"));
-      }
-      const stmt = this.parseStatement();
-      if (stmt) { body.push(stmt); } else { this.pos++; }
-    }
-    return { type: 'verboseBlock', body };
   }
 
   parseAlgorithm() {
@@ -697,7 +657,6 @@ class Parser {
 
       if (t === 'TYPE_DECL' && v === 'type') { body.push(this.parseTypeDeclaration()); continue; }
       if (t === 'VAR_KW') { body.push(this.parseVarDeclaration()); continue; }
-      if (t === 'VERBOSE_START') { body.push(this.parseVerboseBlock()); continue; }
 
       const stmt = this.parseStatement();
       if (stmt) { body.push(stmt); } else { this.pos++; }
@@ -910,7 +869,6 @@ class Evaluator {
       this.variables = config.variables || {};
       this.varTypes = config.varTypes || {};
       this.outputFn = config.outputFn || function() {};
-      this.verbose = config.verbose || false;
       this.inputFn = config.inputFn || function(prompt) {
         return Promise.resolve(console.log('Entrez une valeur :') || '');
       };
@@ -927,7 +885,6 @@ class Evaluator {
       this.variables = args[0] || {};
       this.varTypes = {};
       this.outputFn = args[1] || function() {};
-      this.verbose = args[2] || false;
       this.inputFn = args[3] || function(prompt) {
         return Promise.resolve(console.log('Entrez une valeur :') || '');
       };
@@ -1144,7 +1101,6 @@ class Evaluator {
         this.userProcedures[node.name.toLowerCase()] = node;
         return null;
       }
-      case 'verboseBlock': return await this.evaluateVerboseBlock(node);
       case 'conditional': return await this.evaluateConditional(node);
       case 'forLoop': return await this.evaluateForLoop(node);
       case 'whileLoop': return await this.evaluateWhileLoop(node);
@@ -1156,9 +1112,6 @@ class Evaluator {
       case 'assignment': {
         const value = await this.evaluate(node.expression);
         this.variables[node.varName] = value;
-        if (this.verbose && this.outputFn) {
-          this.outputFn('<span class="step-assign">' + node.varName + ' ← ' + this.formatValue(value) + '</span>');
-        }
         return value;
       }
       case 'typeDeclaration': {
@@ -1210,40 +1163,14 @@ class Evaluator {
     }
   }
 
-  async evaluateVerboseBlock(node) {
-    const savedVerbose = this.verbose;
-    this.verbose = true;
-    if (this.outputFn) {
-      this.outputFn('<span class="step-verbose-header">▶ Début du bloc verbeux</span>');
-    }
-    for (const stmt of node.body) {
-      await this.evaluate(stmt);
-      if (this.returned) break;
-    }
-    if (this.outputFn) {
-      this.outputFn('<span class="step-verbose-header">◀ Fin du bloc verbeux</span>');
-    }
-    this.verbose = savedVerbose;
-    return null;
-  }
-
   async evaluateConditional(node) {
     const cond = await this.evaluate(node.condition);
-    if (this.verbose && this.outputFn) {
-      this.outputFn('<span class="step-condition">🔹 Condition "si" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
-    }
     if (cond) { for (const stmt of node.thenBody) { await this.evaluate(stmt); if (this.returned) return null; } return null; }
     for (const elseifBranch of node.elseIfBranches) {
       const elseifCond = await this.evaluate(elseifBranch.condition);
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-condition">🔹 Condition "sinon si" → ' + (elseifCond ? '✅ vrai' : '❌ faux') + '</span>');
-      }
       if (elseifCond) { for (const stmt of elseifBranch.body) { await this.evaluate(stmt); if (this.returned) return null; } return null; }
     }
     if (node.elseBody) {
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-condition">🔹 Branche "sinon" exécutée</span>');
-      }
       for (const stmt of node.elseBody) { await this.evaluate(stmt); if (this.returned) return null; }
     }
     return null;
@@ -1263,9 +1190,6 @@ class Evaluator {
     if (step > 0) {
       for (let i = start; i <= end; i += step) { 
         this.variables[node.varName] = i; 
-        if (this.verbose && this.outputFn) {
-          this.outputFn('<span class="step-loop">🔄 Boucle Pour : ' + node.varName + ' = ' + i + '</span>');
-        }
         for (const stmt of node.body) { 
           await this.evaluate(stmt); 
           if (this.returned) return null;
@@ -1274,9 +1198,6 @@ class Evaluator {
     } else {
       for (let i = start; i >= end; i += step) { 
         this.variables[node.varName] = i; 
-        if (this.verbose && this.outputFn) {
-          this.outputFn('<span class="step-loop">🔄 Boucle Pour : ' + node.varName + ' = ' + i + '</span>');
-        }
         for (const stmt of node.body) { 
           await this.evaluate(stmt); 
           if (this.returned) return null;
@@ -1288,18 +1209,12 @@ class Evaluator {
 
   async evaluateWhileLoop(node) {
     let cond = await this.evaluate(node.condition);
-    if (this.verbose && this.outputFn) {
-      this.outputFn('<span class="step-condition">🔹 Condition "tant que" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
-    }
     while (cond) {
       for (const stmt of node.body) { 
         await this.evaluate(stmt); 
         if (this.returned) return null;
       }
       cond = await this.evaluate(node.condition);
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-condition">🔹 Condition "tant que" → ' + (cond ? '✅ vrai' : '❌ faux') + '</span>');
-      }
     }
     return null;
   }
@@ -1311,9 +1226,6 @@ class Evaluator {
         if (this.returned) return null;
       }
       const cond = await this.evaluate(node.condition);
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-condition">🔹 Condition "jusqu\'à" → ' + (cond ? '✅ vrai (arrêt)' : '❌ faux (continuation)') + '</span>');
-      }
       if (cond) return null;
     } while (true);
   }
@@ -1332,9 +1244,6 @@ class Evaluator {
         arr[idx] = value;
         this.variables[target.name] = arr;
       }
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-assign">' + target.name + '[' + idx + '] ← ' + this.formatValue(value) + '</span>');
-      }
       return value;
     }
     if (target.type === 'indexExpr') {
@@ -1350,9 +1259,6 @@ class Evaluator {
           parentArr[parentIdx] = container;
           this.variables[target.expression.name] = parentArr;
         }
-      }
-      if (this.verbose && this.outputFn) {
-        this.outputFn('<span class="step-assign">tableau[...] ← ' + this.formatValue(value) + '</span>');
       }
       return value;
     }
@@ -1521,9 +1427,6 @@ class Evaluator {
       const varType = this.varTypes[varName] || null;
       const value = varType ? this.convertToType(raw, varType) : raw;
       this.variables[varName] = value;
-      if (this.verbose && this.outputFn) {
-        this.outputFn(varName + ' ← ' + this.formatOutput(varType, value) + ' (lu)');
-      }
       return value;
     }
 
@@ -1536,21 +1439,11 @@ class Evaluator {
       if (Array.isArray(this.variables[arrayName])) {
         this.variables[arrayName][idx] = value;
       }
-      if (this.verbose && this.outputFn) {
-        this.outputFn(arrayName + '[' + idx + '] ← ' + this.formatOutput(varType, value) + ' (lu)');
-      }
       return value;
     }
 
     const value = await this.inputFn('Entrez une valeur :');
     return value;
-  }
-
-  formatOutput(varType, value) {
-    if (varType === 'caractère' || varType === 'chaîne') {
-      return '"' + value + '"';
-    }
-    return String(value);
   }
 
   writeStdout(...args) {
@@ -1590,6 +1483,7 @@ class Evaluator {
       'arrondi':      (x) => { const xi = Math.floor(x); const fx = x - xi; if (fx < 0.5) return xi; if (fx > 0.5) return xi + 1; return xi % 2 === 0 ? xi : xi + 1; },
       'racine':       (x) => Math.sqrt(x),
       'alea':         (a, b) => Math.floor(Math.random() * (b - a + 1) + a),
+      'aléa':         (a, b) => Math.floor(Math.random() * (b - a + 1) + a),
       'abs':          (x) => Math.abs(x),
       'ent':          (x) => parseInt(x),
       'long':         (ch) => (typeof ch === 'string' ? ch.length : String(ch).length),
