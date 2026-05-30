@@ -30,6 +30,18 @@ function assertEqual(actual, expected, msg = '') {
   }
 }
 
+function assertTrue(value, msg = '') {
+  if (value !== true) {
+    throw new Error(msg || 'Attendu: vrai, Obtenu: faux');
+  }
+}
+
+function assertFalse(value, msg = '') {
+  if (value !== false) {
+    throw new Error(msg || 'Attendu: faux, Obtenu: vrai');
+  }
+}
+
 function assertContains(str, substring, msg = '') {
   if (!str.includes(substring)) {
     throw new Error(msg || `Attendu: "${substring}" dans "${str}"`);
@@ -1045,18 +1057,91 @@ describe('Modules (Procédure, Fonction, Algorithme)', () => {
 
   it('fonction: variables locales isolées', async () => {
     const { variables } = await execProg(`var i: entier
+      var j: entier
       i ← 5
+      j ← 10
       Fonction F(n: entier): entier
       var i: entier
       Début
         i ← 99
         Retourner n + i
       Fin
+      
+      Fonction G(n: entier): entier
+      var j: entier
+      Début
+        j ← 88
+        Retourner n + j
+      Fin
+
+      Fonction H(n: entier):chaine
+      var k: entier
+      Début
+        ch ← ""
+        Pour k de 1 à n Faire
+          Répéter
+            car ← chr(aléa(97, 122))
+          Jusqu'à non H2(car, ch)
+          ch ← ch + car
+        Fin Pour
+        Retourner ch
+      Fin
+      
+      Fonction H2(c: caractere, ch: chaine):booléen
+      var k: entier
+      Début
+        test ← test
+        k ← Long(ch) - 1
+        Tant Que non test et k >= 0 Faire
+          test ← ch[k] = c
+          k ← k - 1
+        Fin
+        Retourner test
+      Fin
+
+      Fonction Verif(ch: chaine):booléen
+      var k: entier
+      var test: booléen
+      Début
+        test ← vrai
+        k ← 122
+        Tant Que test et k >= 97 Faire
+          test ← Pos(chr(k), ch) != -1
+          k ← k - 1
+        Fin
+        Retourner test
+      Fin
+
+      Fonction Manquant(ch:chaine):chaine
+      Début
+        ch1 ← ""
+        Pour i de 97 à 122 Faire
+          Si Pos(chr(i), ch) = -1 Alors
+            ch1 ← ch1 + chr(i)
+          Fin Si
+        Fin Pour
+        Retourner ch1
+      Fin
+
       Début
         i ← F(1)
+        j ← G(2)
+        k ← H(26)
+        p ← Manquant('abcdefghijklmnopqrstuvwxyz')
+        o ← Manquant(k)
+        l ← Verif(k)
+        m ← H2('a', 'bcda')
+        n ← H2('e', 'bcda')
       Fin`);
     // i global = F(1) = 1 + 99 = 100, pas écrasé par le i local
-    assertEqual(variables['i'], 100);
+    assertEqual(variables['i'], 100, 'variable i doit être 100');
+    assertEqual(variables['j'], 90, 'variable j doit être 90');
+    assertEqual(variables['k'].length, 26, 'longueur de k doit être 26');
+    assertEqual(variables['p'], '');
+    assertEqual(variables['o'], '');
+    assertTrue(variables['l'], 'variable l doit être true');
+    assertTrue(variables['m'], 'variable m doit être true');
+    assertFalse(variables['n'], 'variable n doit être false');
   });
 
   it('fonction: appel dans une expression complexe', async () => {
@@ -1127,10 +1212,10 @@ describe('Modules (Procédure, Fonction, Algorithme)', () => {
       Début
         x ← Calc(5)
       Fin`);
-    console.log(prog);
+    // console.log(prog);
   });
 
-  it('procedure: appel d une fonction depuis une procedure', async () => {
+  it('procedure: appel d\'une fonction depuis une procedure', async () => {
     const { variables } = await execProg(`var r: entier
       Fonction Carre(n: entier): entier
       Début

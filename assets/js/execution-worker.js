@@ -31,7 +31,7 @@ self.onmessage = function(e) {
 function waitForInput(promptText) {
   return new Promise((resolve) => {
     // Store the resolver so the message handler can call it
-    self._inputResolver = resolve;
+  self._inputResolver = resolve;
     // Ask the main thread to get input from the user
     self.postMessage({ type: 'input-request', prompt: promptText });
   });
@@ -59,7 +59,7 @@ function runProgram(program) {
 
     const lexer = new Lexer(program);
     const tokens = lexer.tokenize();
-    const parser = new Parser(tokens);
+    const parser = new Parser(tokens, lexer);
 
     // Execute all statements sequentially (async)
     (async () => {

@@ -43,7 +43,7 @@ class Lexer {
 
   errorAt(pos, message) {
     const { line, col } = this.getPosition(pos);
-    return `Erreur (ligne ${line}, colonne ${col}) : ${message}`;
+    return `Ligne ${line}, Colonne ${col} : ${message}`;
   }
 
   tokenize() {
@@ -112,8 +112,7 @@ class Lexer {
       }
 
       if (!matched) {
-        const { line, col } = this.getPosition(this.position);
-        throw new Error(`${this.errorAt(this.position, 'Token inattendu')} : '${this.input[this.position]}'`);
+        throw new Error(`${this.errorAt(this.position, 'Token inattendu : "' + this.input[this.position] + '"')}`);
       }
     }
 
@@ -198,11 +197,11 @@ class Parser {
     if (t && t.pos !== undefined) {
       if (this.lexer && this.lexer.getPosition) {
         const { line, col } = this.lexer.getPosition(t.pos);
-        return `Erreur (ligne ${line}, colonne ${col}) : ${message}`;
+        return `Ligne ${line}, Colonne ${col} : ${message}`;
       }
-      return `Erreur (position ${t.pos}) : ${message}`;
+      return `Ligne 0, Colonne 0 : ${message}`;
     }
-    return `Erreur : ${message}`;
+    return `Ligne 0, Colonne 0 : ${message}`;
   }
 
   consume() { return this.tokens[this.pos++]; }
