@@ -100,3 +100,7 @@ function ecrire(...args) {
   }
   document.getElementById('sortie').innerHTML += s + "<br>";
 }
+
+function ufirst(ch) {
+  return ch.charAt(0).toUpperCase() + ch.slice(1);
+}

@@ -221,6 +221,49 @@ Début
   Trier(t, n)
   Afficher(t, n)
 Fin`, displayText: 'Programme de test 1', type: 'snippet' },
+{ text: `type Tab = tableau de 1000 booléen
+
+Procédure Saisir(@n: entier)
+Début
+  Répéter
+    Ecrire("Entrez un entier: ")
+    Lire(n)
+  Jusqu'à 10 < n < 1000
+Fin
+
+Procédure CalcPremiers(@t: tab, n: entier)
+Début
+  Pour i de 0 à n Faire
+    t[i] ← i > 1
+  Fin Pour
+
+  Pour i de 2 à Ent(Racine(n)) Faire
+    Si t[i] Alors
+      Pour j de i*2 à n Faire pas i
+        t[j] ← faux
+      Fin Pour
+    Fin Si
+  Fin Pour
+Fin
+
+Procédure AfficherPremiers(t: tab, n: entier)
+Début
+  Pour i de 0 à n Faire
+    Si t[i] Alors
+      Ecrire(i)
+    Fin Si
+  Fin Pour
+Fin
+
+Algorithme Principal
+// Déclaration des variables
+var t: tab
+var n: entier
+Début  
+  Saisir(n)
+  CalcPremiers(t, n)
+  AfficherPremiers(t, n)
+Fin`, displayText: 'Programme de test 2', type: 'snippet' },
 
     // Types
     { text: 'entier', displayText: 'entier', type: 'type' },
