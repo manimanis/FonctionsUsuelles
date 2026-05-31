@@ -1,0 +1,208 @@
+/* ── Full-page layout: no body scroll ── */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background: #0d0f14;
+  color: #e8eaf0;
+  font-family: 'Sora', sans-serif;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-rows: auto 1fr 1fr;
+  grid-template-columns: 1fr;
+  height: 100vh;
+  max-width: 100vw;
+}
+
+/* ── Toolbar (row 1) ── */
+.toolbar {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #13161e;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid rgba(255,255,255,0.07);
+  text-decoration: none;
+  background: transparent;
+  color: #7a8099;
+}
+.back-link:hover {
+  border-color: rgba(99,179,237,0.4);
+  color: #63b3ed;
+}
+
+/* ── Editor panel (row 2) ── */
+.editor-panel {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #13161e;
+}
+
+.editor-panel .panel-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 24px;
+  background: #1a1e28;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.editor-panel .panel-header label {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #4a5068;
+  margin: 0;
+}
+
+.editor-panel .panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
+
+/* ── Output panel (row 3) ── */
+.output-panel {
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #13161e;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.output-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  background: #1a1e28;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.output-panel .panel-header label {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #4a5068;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.vars-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #68d391;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  text-align: right;
+}
+
+.output-panel .panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #e8eaf0;
+  /* white-space: pre-wrap; */
+  word-break: break-word;
+}
+
+/* ── CodeMirror takes full height ── */
+#editor-container .CodeMirror {
+  height: 100%;
+  min-height: 200px;
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Input in output ── */
+.input-lire {
+  background: #222736;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: #e8eaf0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  padding: 4px 8px;
+  outline: none;
+  margin: 2px 0;
+}
+.input-lire:focus {
+  border-color: rgba(99,179,237,0.5);
+}
+
+.input-value {
+  display: block;
+  color: #68d391;
+}
+
+.step-state {
+  display: block;
+  color: #68d391;
+  font-size: 0.85rem;
+  padding: 1px 0;
+  margin: 2px 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .toolbar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar-right {
+    flex-wrap: wrap;
+  }
+  .editor-panel .panel-header,
+  .output-panel .panel-header {
+    padding: 6px 12px;
+  }
+  .output-panel .panel-body {
+    padding: 8px 12px;
+  }
+}

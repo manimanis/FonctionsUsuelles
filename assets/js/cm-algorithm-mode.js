@@ -73,6 +73,10 @@
       // Built-in functions (must come before keywords to prioritize)
       { regex: new RegExp('\\b(?:' + builtins.map(escapeRegex).join('|') + ')\\b', 'i'), token: 'builtin' },
 
+      // "Jusqu'à" variants - must match before general keywords because the
+      // apostrophe breaks \b word boundary in the standard keyword regex
+      { regex: /jusqu['\u2019\u2018\u2019\u201a]?[àa]/i, token: 'keyword' },
+
       // Keywords
       { regex: new RegExp('\\b(?:' + keywords.map(escapeRegex).join('|') + ')\\b', 'i'), token: 'keyword' },
 
@@ -95,23 +99,26 @@
   // ── Autocomplete ──
   const allCompletions = [
     // Keywords sorted by category
-    { text: 'si', displayText: 'si … alors … finsi', type: 'keyword' },
-    { text: 'sinon', displayText: 'sinon', type: 'keyword' },
-    { text: 'alors', displayText: 'alors', type: 'keyword' },
-    { text: 'pour', displayText: 'pour … de … à … faire', type: 'keyword' },
-    { text: 'tant', displayText: 'tant que … faire', type: 'keyword' },
-    { text: 'que', displayText: 'que', type: 'keyword' },
-    { text: 'répéter', displayText: 'répéter … jusqu\'à', type: 'keyword' },
-    { text: 'jusqu\'à', displayText: 'jusqu\'à', type: 'keyword' },
-    { text: 'faire', displayText: 'faire', type: 'keyword' },
-    { text: 'début', displayText: 'Début … Fin', type: 'keyword' },
-    { text: 'fonction', displayText: 'Fonction … : type', type: 'keyword' },
-    { text: 'procédure', displayText: 'Procédure …', type: 'keyword' },
-    { text: 'retourner', displayText: 'Retourner', type: 'keyword' },
-    { text: 'var', displayText: 'var … : type', type: 'keyword' },
-    { text: 'type', displayText: 'type … = tableau de', type: 'keyword' },
-    { text: 'tableau', displayText: 'tableau', type: 'keyword' },
-    { text: 'algorithme', displayText: 'Algorithme …', type: 'keyword' },
+    { text: 'var iden : type', displayText: 'var … : type', type: 'keyword' },
+    { text: 'type tab = tableau de 20 entier', displayText: 'Tableau d\'entiers', type: 'keyword' },
+
+    // Snippets
+    { text: 'Algorithme PP\nDébut\n\t//traitement\nFin', displayText: 'Algorithme PP', type: 'snippet' },
+    { text: 'Ecrire(var)', displayText: 'Ecrire(var)', type: 'snippet' },
+    { text: 'Ecrire("texte")', displayText: 'Ecrire("texte")', type: 'snippet' },
+    { text: 'Ecrire("var = ", var)', displayText: 'Ecrire("var = ", var)', type: 'snippet' },
+    { text: 'Si condition Alors\n\t//traitement\nFinsi', displayText: 'si réduite', type: 'snippet' },
+    { text: 'Si condition Alors\n\t//traitement\nSinon\n\t//traitement\nFinsi', displayText: 'si complète', type: 'snippet' },
+    { text: 'Si condition1 Alors\n\t//traitement\nSinon Si condition2 Alors\n\t//traitement\nSinon\n\t//traitement\nFinsi', displayText: 'si généralisée', type: 'snippet' },
+    { text: 'Pour i de deb à fin Faire\n\t//traitement\nFin Pour', displayText: 'pour', type: 'snippet' },
+    { text: 'Pour i de deb à fin Faire Pas p\n\t//traitement\nFin Pour', displayText: 'pour avec pas', type: 'snippet' },
+    { text: 'Tant Que condition Faire\n\t//traitement\nFin Tant Que', displayText: 'tant que', type: 'snippet' },
+    { text: 'Répéter\n\t//traitement\nJusqu\'à condition', displayText: 'répéter jusqu\'à', type: 'snippet' },
+    { text: 'Fonction nom(param: type):type\nDébut\n\t//traitement\n\tRetourner valeur\nFin', displayText: 'Fonction', type: 'snippet' },
+    { text: 'Procédure nom(param: type)\nDébut\n\t//traitement\nFin', displayText: 'Procédure', type: 'snippet' },
+    { text: 'Procédure Saisir(@n: entier)\nDébut\n\tRépéter\n\t\tEcrire("Entrez un entier: ")\n\t\tLire(n)\n\tJusqu\'à 2 ≤ n ≤ 10\nFin', displayText: 'Procédure Saisir', type: 'snippet' },
+    { text: 'Procédure Remplir(@T: tab, n: entier)\nDébut\n\tPour i de 0 à n-1 Faire\n\t\tRépéter\n\t\t\tEcrire("Entrez T[", i, "] ? ")\n\t\t\tLire(T[i])\n\tJusqu\'à T[i] > 0\n\tFin Pour\nFin', displayText: 'Procédure Remplir', type: 'snippet' },
+    { text: 'Procédure Afficher(T: tab, n: entier)\nDébut\n\tPour i de 0 à n-1 Faire\n\t\tEcrire("T[", i, "] = ", T[i])\n\tFin Pour\nFin', displayText: 'Procédure Afficher', type: 'snippet' },
 
     // Types
     { text: 'entier', displayText: 'entier', type: 'type' },
@@ -125,23 +132,22 @@
     { text: 'faux', displayText: 'faux', type: 'literal' },
 
     // Built-in functions
-    { text: 'chr', displayText: 'chr(code)', type: 'function' },
-    { text: 'ord', displayText: 'ord(car)', type: 'function' },
-    { text: 'arrondi', displayText: 'arrondi(x)', type: 'function' },
-    { text: 'racine', displayText: 'racine(x)', type: 'function' },
-    { text: 'alea', displayText: 'aléa(vi, vf)', type: 'function' },
-    { text: 'abs', displayText: 'abs(x)', type: 'function' },
-    { text: 'ent', displayText: 'ent(x)', type: 'function' },
-    { text: 'long', displayText: 'long(ch)', type: 'function' },
-    { text: 'pos', displayText: 'pos(ch1, ch2)', type: 'function' },
-    { text: 'convch', displayText: 'ConvCh(x)', type: 'function' },
-    { text: 'estnum', displayText: 'EstNum(ch)', type: 'function' },
-    { text: 'valeur', displayText: 'valeur(ch)', type: 'function' },
-    { text: 'sous_chaine', displayText: 'sous_chaine(ch, d, f)', type: 'function' },
-    { text: 'effacer', displayText: 'effacer(ch, d, f)', type: 'function' },
-    { text: 'majus', displayText: 'majus(ch)', type: 'function' },
-    { text: 'ecrire', displayText: 'Ecrire(…)', type: 'function' },
-    { text: 'lire', displayText: 'Lire(var)', type: 'function' },
+    { text: 'chr(code)', displayText: 'chr(code)', type: 'function' },
+    { text: 'ord(car)', displayText: 'ord(car)', type: 'function' },
+    { text: 'Arrondi(x)', displayText: 'Arrondi(x)', type: 'function' },
+    { text: 'Racine(x)', displayText: 'Racine(x)', type: 'function' },
+    { text: 'Alea(vi, vf)', displayText: 'Alea(vi, vf)', type: 'function' },
+    { text: 'Abs(x)', displayText: 'Abs(x)', type: 'function' },
+    { text: 'Ent(x)', displayText: 'Ent(x)', type: 'function' },
+    { text: 'Long(ch)', displayText: 'Long(ch)', type: 'function' },
+    { text: 'Pos(ch1, ch2)', displayText: 'Pos(ch1, ch2)', type: 'function' },
+    { text: 'ConvCh(x)', displayText: 'ConvCh(x)', type: 'function' },
+    { text: 'EstNum(ch)', displayText: 'EstNum(ch)', type: 'function' },
+    { text: 'Valeur(ch)', displayText: 'Valeur(ch)', type: 'function' },
+    { text: 'Sous_chaine(ch, d, f)', displayText: 'Sous_chaine(ch, d, f)', type: 'function' },
+    { text: 'Effacer(ch, d, f)', displayText: 'Effacer(ch, d, f)', type: 'function' },
+    { text: 'Majus(ch)', displayText: 'Majus(ch)', type: 'function' },
+    { text: 'Lire(var)', displayText: 'Lire(var)', type: 'function' },
 
     // Operators
     { text: 'div', displayText: 'div', type: 'operator' },

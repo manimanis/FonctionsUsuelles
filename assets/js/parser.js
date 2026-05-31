@@ -129,88 +129,7 @@ function initCodeMirror() {
   const container = document.getElementById('editor-container');
   if (!container) return;
 
-  const defaultProgram = `type Tab1 = Tableau de 50 chaine
-var n : entier
-var t : Tab1
-
-Procédure Saisir(@n: entier)
-Début
-  Repeter
-    Ecrire("Entrez n ? ")
-    Lire(n)
-  Jusqu'à 5 <= n <= 50
-Fin
-
-Procédure Remplir(@t: Tab, n: entier)
-Début
-  Pour i de 0 à n-1 Faire
-    Repeter
-      Ecrire("Entrez t[", i, "] ? ")
-      Lire(t[i])
-    Jusqu'à Verif(t[i])
-  Fin Pour
-Fin
-
-Fonction Verif(ch: chaine): booleen
-var i : entier
-Début
-  test ← Long(ch) > 0
-  i ← 0
-  Tant Que test ET i < Long(ch) Faire
-    Si "A" <= Majus(ch[i]) ET Majus(ch[i]) <= "Z" Alors
-      test ← vrai
-    Sinon
-      test ← faux
-    Fin Si
-    i ← i + 1
-  Fin Tant Que
-  Retourner test
-Fin
-
-Fonction Calc(n: entier): entier
-var s, i : entier
-Début
-  s ← 0
-  Pour i de 0 à n-1 Faire
-    s ← s + i
-  Fin Pour
-  Retourner s
-Fin
-
-Procédure Trier(@t: Tab, n: entier)
-Début
-  // Tri par sélection
-  Pour i de 0 à n-2 Faire
-    min ← i
-    Pour j de i+1 à n-1 Faire
-      Si Long(t[j]) < Long(t[min]) Alors
-        min ← j
-      Fin Si
-    Fin Pour
-    Si min ≠ i Alors
-      temp ← t[i]
-      t[i] ← t[min]
-      t[min] ← temp
-    Fin Si
-  Fin Pour
-Fin
-
-Procédure Afficher(t: Tab, n: entier)
-Début
-  Pour i de 0 à n-1 Faire
-    Ecrire(t[i])
-  Fin Pour
-Fin
-
-Algorithme PP
-Début
-  Saisir(n)
-  Remplir(t, n)
-  x ← Calc(n)
-  Ecrire("x = ", x)
-  Trier(t, n)
-  Afficher(t, n)
-Fin`;
+  const defaultProgram = ``;
 
   editor = CodeMirror(container, {
     value: defaultProgram,
@@ -227,7 +146,49 @@ Fin`;
         CodeMirror.commands.autocomplete(cm);
       },
       'Tab': function(cm) {
-        cm.replaceSelection('  ', 'end');
+        if (cm.somethingSelected()) {
+          // Indent every selected line by 2 spaces
+          cm.indentSelection('add');
+        } else {
+          // Insert 2 spaces at cursor
+          cm.replaceSelection('  ', 'end');
+        }
+      },
+      'Shift-Tab': function(cm) {
+        if (cm.somethingSelected()) {
+          // Dedent every selected line by 2 spaces
+          cm.indentSelection('subtract');
+        } else {
+          // Dedent current line: remove up to 2 leading spaces
+          var cursor = cm.getCursor();
+          var line = cm.getLine(cursor.line);
+          var leadingSpaces = line.match(/^  /);
+          if (leadingSpaces) {
+            cm.replaceRange('', {line: cursor.line, ch: 0}, {line: cursor.line, ch: 2});
+            // Keep cursor at same relative position
+            var newPos = Math.max(0, cursor.ch - 2);
+            cm.setCursor({line: cursor.line, ch: newPos});
+          }
+        }
+      },
+      'Backspace': function(cm) {
+        var cursor = cm.getCursor();
+        if (!cm.somethingSelected() && cursor.ch > 0) {
+          var line = cm.getLine(cursor.line);
+          var textBefore = line.slice(0, cursor.ch);
+          // If cursor is in leading whitespace before any non-space character
+          var nonSpaceIdx = line.search(/\S/);
+          var isAtLeadingEdge = (nonSpaceIdx === -1 || cursor.ch <= nonSpaceIdx);
+          
+          if (/^ +$/.test(textBefore) && isAtLeadingEdge) {
+            // Delete 2 spaces (or 1 if odd number)
+            var spacesToDelete = cursor.ch % 2 === 0 ? 2 : 1;
+            cm.replaceRange('', {line: cursor.line, ch: cursor.ch - spacesToDelete}, {line: cursor.line, ch: cursor.ch});
+            return;
+          }
+        }
+        // Default backspace behavior
+        cm.deleteH(-1, 'char');
       },
     },
     hintOptions: {
