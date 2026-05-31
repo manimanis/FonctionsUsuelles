@@ -1496,6 +1496,35 @@ describe('Tests de bout en bout (programme complet)', () => {
     assertEqual(variables['t'][2], 3);
   });
 
+  it('procedure Découper avec tableau et type en casse différente', async () => {
+    const { variables } = await execProg(`type Tab = tableau de 20 chaine
+      var t: tab
+      var n: entier
+      var ch: chaine
+      
+      Procedure Decouper(@t: tab, @n: entier, ch: chaine)
+      Debut
+        ch ← ch + " "
+        n ← 0
+        Tant que ch ≠ "" faire
+          p ← Pos(" ", ch)
+          mot ← sous_chaine(ch, 0, p)
+          t[n] ← mot
+          n ← n + 1
+          ch ← effacer(ch, 0, p + 1)
+        Fin Tant que
+      Fin
+      
+      Debut
+        ch ← "je taime fort"
+        Decouper(t, n, ch)
+      Fin`);
+    assertEqual(variables['n'], 3);
+    assertEqual(variables['t'][0], 'je');
+    assertEqual(variables['t'][1], 'taime');
+    assertEqual(variables['t'][2], 'fort');
+  });
+
 });
 // terminer */
 

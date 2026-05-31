@@ -1114,7 +1114,8 @@ class Evaluator {
         return value;
       }
       case 'typeDeclaration': {
-        this.userTypes[node.typeName] = {
+        // Stocker avec le nom en minuscules pour éviter les problèmes de casse
+        this.userTypes[node.typeName.toLowerCase()] = {
           type: 'array',
           elementType: node.elementType,
           size: node.arraySize
@@ -1129,7 +1130,8 @@ class Evaluator {
             actualType = node.varType;
             value = this.getDefaultValue(node.varType);
           } else if (node.typeName) {
-            const typeDef = this.userTypes[node.typeName];
+            // Chercher le type en ignorant la casse
+            const typeDef = this.userTypes[node.typeName.toLowerCase()];
             if (typeDef && typeDef.type === 'array') {
               actualType = typeDef.elementType;
               const defaultVal = this.getDefaultValue(typeDef.elementType);
