@@ -691,6 +691,26 @@ class Parser {
     while (this.peek() && this.peek().type !== 'CLOSE_PAR') {
       this.skipEOL();
       if (!this.peek() || this.peek().type === 'CLOSE_PAR') break;
+      
+      // Handle named parameters like sep=":" or fin="-"
+      // sep is an IDENTIFIER, fin is a LOOP keyword  
+      const t = this.peek();
+      if (t && t.type === 'LOOP' && 
+          this.peek(1) && this.peek(1).type === 'COMPARISON' && this.peek(1).value === '=') {
+        // For keyword parameters like fin, consume and create synthetic binary node
+        const paramName = this.consume().value; // consume the LOOP keyword
+        this.expect('COMPARISON'); // consume the '=' sign
+        const rightVal = this.parseAtom();
+        args.push({ type: 'binary', operator: '=', 
+          left: { type: 'identifier', name: paramName }, 
+          right: rightVal
+        });
+        this.skipEOL();
+        if (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') { this.consume(); }
+        else break;
+        continue;
+      }
+      
       args.push(this.parseExpression());
       this.skipEOL();
       if (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') { this.consume(); }

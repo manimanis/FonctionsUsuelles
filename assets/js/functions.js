@@ -93,12 +93,27 @@ function majus(ch) {
 }
 
 function ecrire(...args) {
-  let s = "";
-  for (let arg of args) {
-    if (s != '') s += ' ';
-    s += arg;
+  let separator = ' ';
+  let end = '\n';
+  const values = [];
+  for (const arg of args) {
+    // Detect named parameters like sep=":" or fin="-"
+    if (typeof arg === 'object' && arg !== null && 'sep' in arg) {
+      separator = String(arg.sep);
+      continue;
+    }
+    if (typeof arg === 'object' && arg !== null && 'fin' in arg) {
+      end = String(arg.fin);
+      continue;
+    }
+    values.push(arg !== undefined && arg !== null ? String(arg) : '');
   }
-  document.getElementById('sortie').innerHTML += s + "<br>";
+  const output = values.join(separator) + end;
+  const outEl = document.getElementById('sortie');
+  if (outEl) {
+    const html = output.replace(/\n/g, '<br>');
+    outEl.innerHTML += html;
+  }
 }
 
 function ufirst(ch) {

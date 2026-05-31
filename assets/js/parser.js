@@ -34,7 +34,8 @@ function createExecutionWorker(outputEl) {
     const msg = e.data;
 
     if (msg.type === 'output') {
-      outputEl.innerHTML += msg.text + '<br>';
+      // Convert \n to <br> for HTML display
+      outputEl.innerHTML += msg.text.replace(/\n/g, '<br>');
       outputEl.scrollTop = outputEl.scrollHeight;
     } else if (msg.type === 'input-request') {
       requestInput(outputEl, msg.prompt, worker);
@@ -285,8 +286,10 @@ const app = new Vue({
         
         stepEvaluator = new Evaluator({
           variables,
-          outputFn: (text) => {
-            outputArea.innerHTML += text + '<br>';
+      outputFn: (text) => {
+            // Convert \n to <br> for HTML display, but don't blindly add <br>
+            const html = text.replace(/\n$/, '<br>').replace(/\n/g, '<br>');
+            outputArea.innerHTML += html;
             outputArea.scrollTop = outputArea.scrollHeight;
           },
           inputFn: (promptText) => {

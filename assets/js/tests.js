@@ -686,6 +686,45 @@ describe('Fonction Ecrire', () => {
     assertEqual(combined.includes('20'), true);
   });
 
+  it('ecrire: avec paramètre sep=":" remplace le séparateur par défaut', async () => {
+    const { outputs } = await execProg('Ecrire(1, 2, 3, sep=":")');
+    assertEqual(outputs.length >= 1, true);
+    assertEqual(outputs[0], '1:2:3\n');
+  });
+
+  it('ecrire: avec paramètre fin="-" remplace le caractère de fin', async () => {
+    const { outputs } = await execProg('Ecrire(1, 2, 3, fin="-")');
+    assertEqual(outputs.length >= 1, true);
+    assertEqual(outputs[0], '1 2 3-');
+  });
+
+  it('ecrire: avec sep=":" et fin="-"', async () => {
+    const { outputs } = await execProg('Ecrire(1, 2, 3, sep=":", fin="-")');
+    assertEqual(outputs.length >= 1, true);
+    assertEqual(outputs[0], '1:2:3-');
+  });
+
+  it('ecrire: deux appels consécutifs, un avec fin, le suivant sans', async () => {
+    const { outputs } = await execProg(`Ecrire(1, 2, 3, sep=":", fin="-")
+      Ecrire(4, 5, 6, sep="/")`);
+    assertEqual(outputs.length >= 2, true);
+    // "1:2:3-" puis "4/5/6\n"
+    assertEqual(outputs[0], '1:2:3-');
+    assertEqual(outputs[1], '4/5/6\n');
+  });
+
+  it('ecrire: sep par défaut est espace', async () => {
+    const { outputs } = await execProg('Ecrire("a", "b", "c")');
+    assertEqual(outputs.length >= 1, true);
+    assertEqual(outputs[0], 'a b c\n');
+  });
+
+  it('ecrire: fin par défaut est retour à la ligne', async () => {
+    const { outputs } = await execProg('Ecrire(42)');
+    assertEqual(outputs.length >= 1, true);
+    assertEqual(outputs[0], '42\n');
+  });
+
 });
 
 // ─── 8. Opérateurs arithmétiques et logiques ───
